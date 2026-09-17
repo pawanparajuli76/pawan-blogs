@@ -66,66 +66,66 @@ export function ContactPage() {
 
       <section className="section bg-white">
         <div className="container-narrow">
-          <div className="grid lg:grid-cols-3 gap-10">
+          <div className="grid lg:grid-cols-3 gap-8 lg:gap-10">
             {/* Contact Info */}
             <div className="lg:col-span-1">
-              <h2 className="text-2xl font-serif font-bold text-navy-900 mb-6">
+              <h2 className="text-xl sm:text-2xl font-serif font-bold text-navy-900 mb-4 sm:mb-6">
                 Contact Information
               </h2>
-              <div className="space-y-5">
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 bg-navy-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Mail className="text-gold-400" size={20} />
+              <div className="space-y-4 sm:space-y-5">
+                <div className="flex items-start gap-3.5 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 bg-navy-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Mail className="text-gold-400" size={18} />
                   </div>
                   <div>
-                    <div className="text-xs text-navy-400 uppercase tracking-wider mb-1">Email</div>
+                    <div className="text-xs text-navy-400 uppercase tracking-wider mb-0.5 sm:mb-1">Email</div>
                     <a
                       href={`mailto:${profile?.email || 'pawanparajuli33@gmail.com'}`}
-                      className="text-sm text-navy-800 font-medium hover:text-teal-700 transition-colors break-all"
+                      className="text-xs sm:text-sm text-navy-800 font-medium hover:text-teal-700 transition-colors break-all"
                     >
                       {profile?.email || 'pawanparajuli33@gmail.com'}
                     </a>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 bg-navy-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Phone className="text-gold-400" size={20} />
+                <div className="flex items-start gap-3.5 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 bg-navy-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Phone className="text-gold-400" size={18} />
                   </div>
                   <div>
-                    <div className="text-xs text-navy-400 uppercase tracking-wider mb-1">Phone</div>
+                    <div className="text-xs text-navy-400 uppercase tracking-wider mb-0.5 sm:mb-1">Phone</div>
                     <a
                       href={`tel:+977${profile?.phone || '9846796501'}`}
-                      className="text-sm text-navy-800 font-medium hover:text-teal-700 transition-colors"
+                      className="text-xs sm:text-sm text-navy-800 font-medium hover:text-teal-700 transition-colors"
                     >
-                      {profile?.phone || '9846796501'}
+                      {profile?.phone || '+977 9846796501'}
                     </a>
                   </div>
                 </div>
 
-                <div className="flex items-start gap-4">
-                  <div className="w-11 h-11 bg-navy-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <MapPin className="text-gold-400" size={20} />
+                <div className="flex items-start gap-3.5 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 bg-navy-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <MapPin className="text-gold-400" size={18} />
                   </div>
                   <div>
-                    <div className="text-xs text-navy-400 uppercase tracking-wider mb-1">Location</div>
-                    <div className="text-sm text-navy-800 font-medium">
+                    <div className="text-xs text-navy-400 uppercase tracking-wider mb-0.5 sm:mb-1">Location</div>
+                    <div className="text-xs sm:text-sm text-navy-800 font-medium">
                       {profile?.location || 'Nepal'}
                     </div>
                   </div>
                 </div>
 
                 {(profile?.linkedin_url || profile?.facebook_url) && (
-                  <div className="flex items-center gap-3 pt-4">
+                  <div className="flex items-center gap-2.5 sm:gap-3 pt-3 sm:pt-4">
                     {profile?.linkedin_url && (
                       <a
                         href={profile.linkedin_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="LinkedIn"
-                        className="w-10 h-10 bg-navy-50 rounded-lg flex items-center justify-center text-navy-700 hover:bg-navy-800 hover:text-gold-400 transition-all"
+                        className="w-9 h-9 sm:w-10 sm:h-10 bg-navy-50 rounded-lg flex items-center justify-center text-navy-700 hover:bg-navy-800 hover:text-gold-400 transition-all"
                       >
-                        <Linkedin size={20} />
+                        <Linkedin size={18} />
                       </a>
                     )}
                     {profile?.facebook_url && (
@@ -134,9 +134,9 @@ export function ContactPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="Facebook"
-                        className="w-10 h-10 bg-navy-50 rounded-lg flex items-center justify-center text-navy-700 hover:bg-navy-800 hover:text-gold-400 transition-all"
+                        className="w-9 h-9 sm:w-10 sm:h-10 bg-navy-50 rounded-lg flex items-center justify-center text-navy-700 hover:bg-navy-800 hover:text-gold-400 transition-all"
                       >
-                        <Facebook size={20} />
+                        <Facebook size={18} />
                       </a>
                     )}
                   </div>
@@ -144,9 +144,9 @@ export function ContactPage() {
               </div>
 
               {/* Disclaimer */}
-              <div className="mt-8 p-4 bg-navy-50 rounded-xl border border-navy-100">
+              <div className="mt-6 sm:mt-8 p-3.5 sm:p-4 bg-navy-50 rounded-xl border border-navy-100">
                 <div className="flex items-start gap-2.5">
-                  <Info className="text-navy-500 flex-shrink-0 mt-0.5" size={18} />
+                  <Info className="text-navy-500 flex-shrink-0 mt-0.5" size={16} />
                   <p className="text-xs text-navy-600 leading-relaxed">
                     Submitting this form does not automatically create a professional/client
                     engagement. A formal engagement may require separate discussion and agreement
@@ -158,38 +158,38 @@ export function ContactPage() {
 
             {/* Contact Form */}
             <div className="lg:col-span-2">
-              <div className="card p-6 md:p-8">
+              <div className="card p-5 sm:p-7 md:p-8">
                 {submitted ? (
-                  <div className="text-center py-12">
-                    <CheckCircle2 className="mx-auto text-teal-600 mb-4" size={48} />
-                    <h3 className="text-2xl font-serif font-bold text-navy-900 mb-3">
+                  <div className="text-center py-10 sm:py-12">
+                    <CheckCircle2 className="mx-auto text-teal-600 mb-3 sm:mb-4" size={44} />
+                    <h3 className="text-xl sm:text-2xl font-serif font-bold text-navy-900 mb-2 sm:mb-3">
                       Message Sent!
                     </h3>
-                    <p className="text-navy-600 mb-6 max-w-md mx-auto">
+                    <p className="text-navy-600 text-sm sm:text-base mb-6 max-w-md mx-auto">
                       Thank you for reaching out. I'll get back to you as soon as possible.
                     </p>
                     <button
                       onClick={() => setSubmitted(false)}
-                      className="btn-secondary"
+                      className="btn-secondary btn-sm"
                     >
                       Send Another Message
                     </button>
                   </div>
                 ) : (
                   <>
-                    <h2 className="text-2xl font-serif font-bold text-navy-900 mb-6">
+                    <h2 className="text-xl sm:text-2xl font-serif font-bold text-navy-900 mb-4 sm:mb-6">
                       Send a Message
                     </h2>
 
                     {error && (
-                      <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
-                        <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
-                        <p className="text-sm text-red-700">{error}</p>
+                      <div className="flex items-center gap-2.5 sm:gap-3 p-3.5 sm:p-4 bg-red-50 border border-red-200 rounded-lg mb-5 sm:mb-6">
+                        <AlertCircle className="text-red-600 flex-shrink-0" size={18} />
+                        <p className="text-xs sm:text-sm text-red-700">{error}</p>
                       </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                      <div className="grid sm:grid-cols-2 gap-5">
+                    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+                      <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
                         <div>
                           <label htmlFor="name" className="label-field">
                             Full Name <span className="text-red-500">*</span>
@@ -222,7 +222,7 @@ export function ContactPage() {
                         </div>
                       </div>
 
-                      <div className="grid sm:grid-cols-2 gap-5">
+                      <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
                         <div>
                           <label htmlFor="phone" className="label-field">Phone</label>
                           <input
@@ -257,7 +257,7 @@ export function ContactPage() {
                           id="message"
                           name="message"
                           required
-                          rows={6}
+                          rows={5}
                           value={formData.message}
                           onChange={handleChange}
                           className="input-field resize-none"
@@ -270,7 +270,7 @@ export function ContactPage() {
                         disabled={submitting}
                         className="btn-primary w-full sm:w-auto disabled:opacity-60 disabled:cursor-not-allowed"
                       >
-                        {submitting ? 'Sending...' : 'Send Message'}
+                        <span>{submitting ? 'Sending...' : 'Send Message'}</span>
                         <Send size={16} />
                       </button>
                     </form>

@@ -45,12 +45,12 @@ export function ResourcesPage() {
 
       <section className="section bg-navy-50">
         <div className="container-wide">
-          {/* Category Filter */}
+          {/* Category Filter - Horizontally scrollable on mobile */}
           {categories.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-8 justify-center">
+            <div className="flex flex-nowrap sm:flex-wrap gap-1.5 sm:gap-2 mb-6 sm:mb-8 justify-start sm:justify-center overflow-x-auto pb-1 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
               <button
                 onClick={() => setActiveFilter(null)}
-                className={`badge cursor-pointer transition-colors ${
+                className={`badge whitespace-nowrap cursor-pointer transition-colors py-1 px-3 ${
                   !activeFilter ? 'bg-navy-800 text-white' : 'bg-white text-navy-700 border border-navy-200 hover:bg-navy-100'
                 }`}
               >
@@ -60,7 +60,7 @@ export function ResourcesPage() {
                 <button
                   key={cat}
                   onClick={() => setActiveFilter(cat)}
-                  className={`badge cursor-pointer transition-colors ${
+                  className={`badge whitespace-nowrap cursor-pointer transition-colors py-1 px-3 ${
                     activeFilter === cat ? 'bg-navy-800 text-white' : 'bg-white text-navy-700 border border-navy-200 hover:bg-navy-100'
                   }`}
                 >
@@ -71,10 +71,10 @@ export function ResourcesPage() {
           )}
 
           {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="card p-6 animate-pulse">
-                  <div className="bg-navy-100 w-12 h-12 rounded-xl mb-4" />
+                <div key={i} className="card p-4 sm:p-6 animate-pulse">
+                  <div className="bg-navy-100 w-11 h-11 rounded-xl mb-4" />
                   <div className="bg-navy-100 h-5 w-3/4 rounded mb-3" />
                   <div className="bg-navy-100 h-3 w-full rounded mb-2" />
                   <div className="bg-navy-100 h-3 w-2/3 rounded" />
@@ -82,60 +82,60 @@ export function ResourcesPage() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-20">
-              <FolderOpen className="mx-auto text-navy-300 mb-4" size={48} />
-              <h3 className="text-xl font-serif font-semibold text-navy-900 mb-2">
+            <div className="text-center py-12 sm:py-20">
+              <FolderOpen className="mx-auto text-navy-300 mb-3 sm:mb-4" size={44} />
+              <h3 className="text-lg sm:text-xl font-serif font-semibold text-navy-900 mb-2">
                 No resources available yet
               </h3>
-              <p className="text-navy-500 max-w-md mx-auto">
+              <p className="text-xs sm:text-sm md:text-base text-navy-500 max-w-md mx-auto">
                 Professional resources including tax guides, templates, checklists, and reference
                 documents will be added here soon. Please check back later.
               </p>
 
               {/* Preview of planned resource types */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl mx-auto mt-10">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto mt-8 sm:mt-10">
                 {resourceIcons.map((type) => (
                   <div
                     key={type}
-                    className="card p-5 text-center opacity-60"
+                    className="card p-3.5 sm:p-5 text-center opacity-70"
                   >
-                    <FileText className="mx-auto text-navy-400 mb-2" size={24} />
-                    <span className="text-xs text-navy-500 font-medium">{type}</span>
+                    <FileText className="mx-auto text-navy-400 mb-1.5 sm:mb-2" size={20} />
+                    <span className="text-xs text-navy-600 font-medium">{type}</span>
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {filtered.map((resource) => (
-                <div key={resource.id} className="card-hover p-6 flex flex-col">
-                  <div className="w-12 h-12 bg-navy-800 rounded-xl flex items-center justify-center mb-4">
-                    <FileText className="text-gold-400" size={22} />
+                <div key={resource.id} className="card-hover p-4 sm:p-6 flex flex-col">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-navy-800 rounded-xl flex items-center justify-center mb-3 sm:mb-4">
+                    <FileText className="text-gold-400" size={20} />
                   </div>
                   {resource.category && (
-                    <span className="badge-navy mb-3 self-start text-xs">{resource.category}</span>
+                    <span className="badge-navy mb-2.5 sm:mb-3 self-start text-xs">{resource.category}</span>
                   )}
-                  <h3 className="text-lg font-serif font-semibold text-navy-900 mb-2">
+                  <h3 className="text-base sm:text-lg font-serif font-semibold text-navy-900 mb-1.5 sm:mb-2 leading-snug">
                     {resource.title}
                   </h3>
                   {resource.description && (
-                    <p className="text-sm text-navy-600 mb-4 flex-1">{resource.description}</p>
+                    <p className="text-xs sm:text-sm text-navy-600 mb-4 flex-1">{resource.description}</p>
                   )}
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-navy-50">
+                  <div className="flex items-center justify-between mt-auto pt-3 sm:pt-4 border-t border-navy-50">
                     <span className="text-xs text-navy-400">{formatDateShort(resource.created_at)}</span>
                     {resource.file_url ? (
                       <a
                         href={resource.file_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm text-teal-700 font-medium hover:text-teal-800 transition-colors"
+                        className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-teal-700 font-medium hover:text-teal-800 transition-colors"
                       >
-                        <Download size={16} />
+                        <Download size={15} />
                         Download
                       </a>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 text-sm text-navy-400">
-                        <ExternalLink size={16} />
+                      <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm text-navy-400">
+                        <ExternalLink size={15} />
                         Coming Soon
                       </span>
                     )}

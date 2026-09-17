@@ -14,13 +14,13 @@ export function LegalPage({ title, eyebrow, sections }: LegalPageProps) {
       <PageHeader eyebrow={eyebrow} title={title} />
       <section className="section bg-white">
         <div className="container-prose">
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {sections.map((section, i) => (
               <div key={i}>
-                <h2 className="text-xl md:text-2xl font-serif font-semibold text-navy-900 mb-3">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-serif font-semibold text-navy-900 mb-2 sm:mb-3">
                   {section.heading}
                 </h2>
-                <p className="text-navy-700 leading-relaxed">{section.body}</p>
+                <p className="text-xs sm:text-sm md:text-base text-navy-700 leading-relaxed">{section.body}</p>
               </div>
             ))}
           </div>

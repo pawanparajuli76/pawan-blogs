@@ -169,13 +169,13 @@ export function BlogPostPage() {
   if (loading) {
     return (
       <div className="section bg-white">
-        <div className="container-narrow">
+        <div className="container-wide">
           <div className="animate-pulse">
             <div className="bg-navy-100 h-8 w-32 rounded mb-6" />
-            <div className="bg-navy-100 h-12 w-3/4 rounded mb-4" />
-            <div className="bg-navy-100 h-4 w-1/2 rounded mb-8" />
-            <div className="bg-navy-100 h-64 rounded-xl mb-8" />
-            <div className="space-y-3">
+            <div className="bg-navy-100 h-12 w-3/4 max-w-4xl rounded mb-4" />
+            <div className="bg-navy-100 h-5 w-2/3 max-w-3xl rounded mb-8" />
+            <div className="bg-navy-100 h-80 rounded-xl mb-10 max-w-5xl" />
+            <div className="space-y-3 max-w-4xl">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className="bg-navy-100 h-4 rounded" style={{ width: `${85 + Math.random() * 15}%` }} />
               ))}
@@ -236,52 +236,54 @@ export function BlogPostPage() {
       />
 
       {/* Article Header */}
-      <div className="bg-navy-900 text-white py-12 md:py-16">
-        <div className="container-narrow">
+      <div className="bg-navy-900 text-white py-10 sm:py-14 md:py-18">
+        <div className="container-wide">
           <Link
             to="/blog"
-            className="inline-flex items-center gap-1.5 text-navy-300 hover:text-gold-400 text-sm mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-navy-300 hover:text-gold-400 text-xs sm:text-sm mb-4 sm:mb-6 transition-colors"
           >
             <ChevronLeft size={16} />
             Back to Blog
           </Link>
 
           {post.category && (
-            <Link
-              to={`/blog/category/${post.category.slug}`}
-              className="badge-gold mb-4 hover:bg-gold-200 transition-colors"
-            >
-              {post.category.name}
-            </Link>
+            <div className="mb-3 sm:mb-4">
+              <Link
+                to={`/blog/category/${post.category.slug}`}
+                className="badge-gold hover:bg-gold-200 transition-colors text-xs"
+              >
+                {post.category.name}
+              </Link>
+            </div>
           )}
 
-          <h1 className="text-white text-3xl md:text-4xl lg:text-5xl font-serif font-bold leading-tight mb-6">
+          <h1 className="text-white text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif font-bold leading-tight mb-4 sm:mb-6 max-w-5xl">
             {post.title}
           </h1>
 
           {post.excerpt && (
-            <p className="text-navy-200 text-lg leading-relaxed max-w-3xl mb-6">
+            <p className="text-navy-200 text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed max-w-5xl mb-6 sm:mb-8">
               {post.excerpt}
             </p>
           )}
 
-          <div className="flex flex-wrap items-center gap-5 text-sm text-navy-300">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-navy-300 pt-2 border-t border-navy-800/80">
             {post.author && (
-              <span className="flex items-center gap-2">
-                <User size={15} />
-                {post.author.full_name}
+              <span className="flex items-center gap-1.5">
+                <User size={14} className="text-gold-400" />
+                <span className="text-navy-200">{post.author.full_name}</span>
               </span>
             )}
-            <span className="flex items-center gap-2">
-              <Calendar size={15} />
+            <span className="flex items-center gap-1.5">
+              <Calendar size={14} className="text-gold-400" />
               {formatDate(post.published_at || post.created_at)}
             </span>
-            <span className="flex items-center gap-2">
-              <Clock size={15} />
+            <span className="flex items-center gap-1.5">
+              <Clock size={14} className="text-gold-400" />
               {readingTime} min read
             </span>
             {post.updated_at !== post.created_at && (
-              <span className="text-navy-400">
+              <span className="text-navy-400 text-xs">
                 Updated {formatDateShort(post.updated_at)}
               </span>
             )}
@@ -291,36 +293,40 @@ export function BlogPostPage() {
 
       {/* Featured Image */}
       {post.featured_image && (
-        <div className="container-narrow -mt-8 relative z-10">
-          <img
-            src={post.featured_image}
-            alt={post.title}
-            className="w-full h-64 md:h-96 object-cover rounded-2xl shadow-soft-xl"
-          />
+        <div className="bg-white pt-8 sm:pt-10 md:pt-12 pb-2 sm:pb-4">
+          <div className="container-wide">
+            <div className="max-w-5xl mx-auto">
+              <img
+                src={post.featured_image}
+                alt={post.title}
+                className="w-full h-auto max-h-[580px] object-contain rounded-xl sm:rounded-2xl shadow-soft-lg mx-auto block"
+              />
+            </div>
+          </div>
         </div>
       )}
 
       {/* Article Body */}
-      <article className="section bg-white">
-        <div className="container-narrow">
-          <div className="grid lg:grid-cols-4 gap-10">
-            {/* Table of Contents */}
+      <article className="section bg-white pt-6 sm:pt-8 md:pt-10">
+        <div className="container-wide">
+          <div className={headings.length > 2 ? 'lg:flex lg:gap-10 xl:gap-14 lg:items-start' : ''}>
+            {/* Table of Contents - Desktop Sidebar */}
             {headings.length > 2 && (
-              <aside className="hidden lg:block lg:col-span-1">
-                <div className="sticky top-28">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-navy-900 mb-4">
+              <aside className="hidden lg:block w-60 xl:w-64 flex-shrink-0">
+                <div className="sticky top-28 max-h-[calc(100vh-8rem)] overflow-y-auto pr-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-navy-900 mb-3.5 pb-2 border-b border-navy-100">
                     Table of Contents
                   </h3>
-                  <nav className="space-y-1.5">
+                  <nav className="space-y-1 text-sm">
                     {headings.map((heading) => (
                       <a
                         key={heading.id}
                         href={`#${heading.id}`}
-                        className={`block text-sm leading-snug transition-colors py-1 border-l-2 pl-3 ${
+                        className={`block text-xs sm:text-sm leading-snug transition-colors py-1.5 border-l-2 pl-3 ${
                           activeHeading === heading.id
-                            ? 'text-gold-700 border-gold-500 font-medium'
-                            : 'text-navy-500 border-navy-100 hover:text-navy-800 hover:border-navy-300'
-                        } ${heading.level === 3 ? 'pl-6' : heading.level === 4 ? 'pl-9' : ''}`}
+                            ? 'text-gold-700 border-gold-500 font-semibold bg-gold-50/50 rounded-r'
+                            : 'text-navy-600 border-navy-100 hover:text-navy-900 hover:border-navy-300'
+                        } ${heading.level === 3 ? 'pl-5 text-xs' : heading.level === 4 ? 'pl-7 text-xs' : ''}`}
                       >
                         {heading.text}
                       </a>
@@ -330,8 +336,40 @@ export function BlogPostPage() {
               </aside>
             )}
 
-            {/* Main Content */}
-            <div className={headings.length > 2 ? 'lg:col-span-3' : 'lg:col-span-4'}>
+            {/* Main Article Content */}
+            <div className={`min-w-0 flex-1 ${headings.length > 2 ? 'max-w-4xl' : 'max-w-4xl mx-auto'}`}>
+              {/* Table of Contents - Mobile Collapsible Accordion */}
+              {headings.length > 2 && (
+                <div className="lg:hidden mb-8 p-4 bg-navy-50/70 border border-navy-100 rounded-xl">
+                  <details className="group">
+                    <summary className="flex items-center justify-between cursor-pointer font-semibold text-navy-900 text-sm select-none list-none">
+                      <span className="flex items-center gap-2">
+                        <span>Table of Contents</span>
+                        <span className="text-[11px] bg-navy-200 text-navy-800 px-2 py-0.5 rounded-full font-medium">
+                          {headings.length}
+                        </span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-navy-500 transition-transform group-open:rotate-90" />
+                    </summary>
+                    <nav className="mt-3 pt-3 border-t border-navy-200/70 space-y-1.5 max-h-60 overflow-y-auto">
+                      {headings.map((heading) => (
+                        <a
+                          key={heading.id}
+                          href={`#${heading.id}`}
+                          className={`block text-xs sm:text-sm transition-colors py-1 pl-2 border-l-2 ${
+                            activeHeading === heading.id
+                              ? 'text-gold-700 border-gold-500 font-semibold'
+                              : 'text-navy-600 border-transparent hover:text-navy-900 hover:border-navy-300'
+                          } ${heading.level === 3 ? 'ml-3' : heading.level === 4 ? 'ml-6' : ''}`}
+                        >
+                          {heading.text}
+                        </a>
+                      ))}
+                    </nav>
+                  </details>
+                </div>
+              )}
+
               <div
                 className="prose-content"
                 dangerouslySetInnerHTML={renderContent()}
@@ -339,10 +377,10 @@ export function BlogPostPage() {
 
               {/* Tags */}
               {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 mt-10 pt-8 border-t border-navy-100">
-                  <span className="text-sm font-medium text-navy-700 mr-2">Tags:</span>
+                <div className="flex flex-wrap items-center gap-2 mt-8 sm:mt-10 pt-6 sm:pt-8 border-t border-navy-100">
+                  <span className="text-xs sm:text-sm font-medium text-navy-700 mr-1 sm:mr-2">Tags:</span>
                   {post.tags.map((tag) => (
-                    <span key={tag.id} className="badge-navy">
+                    <span key={tag.id} className="badge-navy text-xs">
                       {tag.name}
                     </span>
                   ))}
@@ -350,8 +388,8 @@ export function BlogPostPage() {
               )}
 
               {/* Social Sharing */}
-              <div className="flex flex-wrap items-center gap-3 mt-8 pt-6 border-t border-navy-100">
-                <span className="text-sm font-medium text-navy-700">Share:</span>
+              <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-navy-100">
+                <span className="text-xs sm:text-sm font-medium text-navy-700">Share:</span>
                 {shareButtons.map((btn) => {
                   const Icon = btn.icon;
                   return (
@@ -361,28 +399,28 @@ export function BlogPostPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={btn.label}
-                      className="w-9 h-9 bg-navy-50 rounded-lg flex items-center justify-center text-navy-600 hover:bg-navy-800 hover:text-white transition-all"
+                      className="w-8 h-8 sm:w-9 sm:h-9 bg-navy-50 rounded-lg flex items-center justify-center text-navy-600 hover:bg-navy-800 hover:text-white transition-all"
                     >
-                      <Icon size={17} />
+                      <Icon size={16} />
                     </a>
                   );
                 })}
                 <button
                   onClick={handleCopyLink}
                   aria-label="Copy link"
-                  className="w-9 h-9 bg-navy-50 rounded-lg flex items-center justify-center text-navy-600 hover:bg-navy-800 hover:text-white transition-all"
+                  className="w-8 h-8 sm:w-9 sm:h-9 bg-navy-50 rounded-lg flex items-center justify-center text-navy-600 hover:bg-navy-800 hover:text-white transition-all"
                 >
-                  {copied ? <Check size={17} className="text-teal-500" /> : <Link2 size={17} />}
+                  {copied ? <Check size={16} className="text-teal-500" /> : <Link2 size={16} />}
                 </button>
               </div>
 
               {/* Disclaimer */}
-              <div className="mt-10 p-6 bg-gold-50 border border-gold-200 rounded-xl">
+              <div className="mt-8 sm:mt-10 p-4 sm:p-6 bg-gold-50 border border-gold-200 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="text-gold-600 flex-shrink-0 mt-0.5" size={20} />
+                  <AlertCircle className="text-gold-600 flex-shrink-0 mt-0.5" size={18} />
                   <div>
-                    <h4 className="text-sm font-semibold text-navy-900 mb-1">Disclaimer</h4>
-                    <p className="text-sm text-navy-600 leading-relaxed">
+                    <h4 className="text-xs sm:text-sm font-semibold text-navy-900 mb-1">Disclaimer</h4>
+                    <p className="text-xs sm:text-sm text-navy-600 leading-relaxed">
                       The information provided in this article is for general educational and
                       informational purposes only and should not be considered professional tax,
                       accounting, legal or financial advice. Regulations may change, and readers
@@ -400,18 +438,18 @@ export function BlogPostPage() {
       {/* Prev / Next Navigation */}
       {(prevPost || nextPost) && (
         <section className="section-sm bg-navy-50 border-t border-navy-100">
-          <div className="container-narrow">
-            <div className="grid md:grid-cols-2 gap-4">
+          <div className="container-wide">
+            <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 max-w-5xl mx-auto">
               {prevPost && (
                 <Link
                   to={`/blog/${prevPost.slug}`}
-                  className="card-hover p-6 group"
+                  className="card-hover p-4 sm:p-6 group"
                 >
-                  <span className="flex items-center gap-1.5 text-xs text-navy-400 mb-2">
+                  <span className="flex items-center gap-1.5 text-xs text-navy-400 mb-1.5 sm:mb-2">
                     <ChevronLeft size={14} />
                     Previous Article
                   </span>
-                  <h4 className="text-base font-serif font-semibold text-navy-900 group-hover:text-navy-700 transition-colors">
+                  <h4 className="text-sm sm:text-base font-serif font-semibold text-navy-900 group-hover:text-navy-700 transition-colors line-clamp-2">
                     {prevPost.title}
                   </h4>
                 </Link>
@@ -419,13 +457,13 @@ export function BlogPostPage() {
               {nextPost && (
                 <Link
                   to={`/blog/${nextPost.slug}`}
-                  className="card-hover p-6 group md:text-right"
+                  className="card-hover p-4 sm:p-6 group sm:text-right"
                 >
-                  <span className="flex items-center gap-1.5 text-xs text-navy-400 mb-2 md:justify-end">
+                  <span className="flex items-center gap-1.5 text-xs text-navy-400 mb-1.5 sm:mb-2 sm:justify-end">
                     Next Article
                     <ChevronRight size={14} />
                   </span>
-                  <h4 className="text-base font-serif font-semibold text-navy-900 group-hover:text-navy-700 transition-colors">
+                  <h4 className="text-sm sm:text-base font-serif font-semibold text-navy-900 group-hover:text-navy-700 transition-colors line-clamp-2">
                     {nextPost.title}
                   </h4>
                 </Link>
@@ -439,10 +477,10 @@ export function BlogPostPage() {
       {relatedPosts.length > 0 && (
         <section className="section bg-white">
           <div className="container-wide">
-            <h2 className="text-2xl md:text-3xl font-serif font-bold text-navy-900 mb-8 text-center">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-serif font-bold text-navy-900 mb-6 sm:mb-8 text-center">
               Related Articles
             </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {relatedPosts.map((rp) => (
                 <BlogCard key={rp.id} post={rp} />
               ))}

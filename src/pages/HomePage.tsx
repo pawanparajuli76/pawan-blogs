@@ -122,53 +122,53 @@ export function HomePage() {
                                                             {/* ========================================================================= */}
       {/* 1. MINIMAL HERO AREA                                                      */}
       {/* ========================================================================= */}
-      <section className="relative w-full min-h-[540px] sm:min-h-[600px] md:min-h-[650px] lg:min-h-[680px] xl:min-h-[700px] flex items-start bg-neutral-950 overflow-hidden">
-        {/* Full-width responsive background image with original proportions */}
+      <section className="relative w-full min-h-[380px] sm:min-h-[480px] md:min-h-[600px] lg:min-h-[680px] xl:min-h-[700px] flex items-start bg-neutral-950 overflow-hidden">
+        {/* Full-width responsive background image preserving desktop composition */}
         <div className="absolute inset-0 z-0">
           <img
             src="/images/Home%20Hero.png"
             alt="Hero Background"
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover object-[82%_center] sm:object-[center_center] lg:object-center"
             loading="eager"
           />
-          {/* Subtle neutral dark gradient on the left for crisp text legibility without obscuring right objects */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 via-35% md:via-45% to-transparent" />
+          {/* Neutral dark gradient on the left ensuring crisp text legibility while laptop on lower-right shines through */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 via-50% sm:via-40% md:via-45% to-transparent" />
         </div>
 
-        {/* Hero Content explicitly top-aligned in the upper-left open area (~80-90px from left, ~140-160px below header) */}
-        <div className="relative z-10 w-full px-6 sm:px-12 md:px-16 lg:pl-[85px] xl:pl-[90px] lg:pr-8 pt-[100px] sm:pt-[120px] md:pt-[140px] lg:pt-[150px] pb-16 sm:pb-20">
-          <div className="w-full max-w-[480px] text-left">
-            {/* Heading - Natural two-line arrangement */}
-            <h1 className="font-serif font-medium text-3xl sm:text-4xl md:text-[46px] lg:text-[48px] xl:text-[50px] text-white tracking-tight leading-[1.05] drop-shadow-sm">
+        {/* Hero Content positioned in the upper-left open area matching desktop hierarchy */}
+        <div className="relative z-10 w-full px-5 sm:px-8 md:px-16 lg:pl-[85px] xl:pl-[90px] lg:pr-8 pt-6 sm:pt-12 md:pt-[130px] lg:pt-[150px] pb-8 sm:pb-16 md:pb-20">
+          <div className="w-full max-w-[320px] sm:max-w-[400px] md:max-w-[480px] text-left">
+            {/* Heading - Natural two-line arrangement matching desktop */}
+            <h1 className="font-serif font-medium text-[26px] sm:text-3xl md:text-[46px] lg:text-[48px] xl:text-[50px] text-white tracking-tight leading-[1.08] drop-shadow-sm">
               Ideas. Perspectives.<br />Insights.
             </h1>
 
             {/* Short subtle gold line below heading */}
-            <div className="w-12 h-[2px] bg-gold-400/80 mt-3.5 mb-4 rounded-full" />
+            <div className="w-10 sm:w-12 h-[2px] bg-gold-400/80 mt-2.5 sm:mt-3.5 mb-2.5 sm:mb-4 rounded-full" />
 
             {/* Supporting text */}
-            <p className="font-sans font-light text-sm sm:text-[17px] md:text-[18px] text-white/90 leading-[1.55] max-w-[400px] drop-shadow-sm">
+            <p className="font-sans font-light text-xs sm:text-[15px] md:text-[18px] text-white/90 leading-[1.45] sm:leading-[1.55] max-w-[260px] sm:max-w-[340px] md:max-w-[400px] drop-shadow-sm">
               A space for research, professional perspectives and thoughtful writing.
             </p>
 
             {/* Side-by-side compact CTA buttons */}
-            <div className="mt-6 sm:mt-7 flex flex-wrap items-center justify-start gap-3 sm:gap-3.5">
+            <div className="mt-4 sm:mt-6 md:mt-7 flex flex-row items-center justify-start gap-2 sm:gap-3 md:gap-3.5">
               {/* Explore Insights Button */}
               <a
                 href="#latest-insights"
-                className="inline-flex items-center justify-center gap-1.5 px-4.5 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-gold-500 hover:bg-gold-400 text-navy-950 font-medium text-xs sm:text-sm tracking-wide transition-all duration-200 shadow-soft hover:shadow-soft-lg group"
+                className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-gold-500 hover:bg-gold-400 text-navy-950 font-medium text-[11px] sm:text-xs md:text-sm tracking-wide transition-all duration-200 shadow-soft hover:shadow-soft-lg group whitespace-nowrap"
               >
                 <span>Explore Insights</span>
-                <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
               </a>
 
               {/* About Me Button */}
               <Link
                 to="/about"
-                className="inline-flex items-center justify-center gap-1.5 px-4.5 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-transparent hover:bg-gold-400/10 text-gold-400 hover:text-gold-300 border border-gold-400/70 hover:border-gold-300 font-medium text-xs sm:text-sm tracking-wide transition-all duration-200 group"
+                className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-lg bg-transparent hover:bg-gold-400/10 text-gold-400 hover:text-gold-300 border border-gold-400/70 hover:border-gold-300 font-medium text-[11px] sm:text-xs md:text-sm tracking-wide transition-all duration-200 group whitespace-nowrap"
               >
                 <span>About Me</span>
-                <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
+                <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
           </div>
@@ -178,17 +178,17 @@ export function HomePage() {
       {/* ========================================================================= */}
       {/* 2. LATEST INSIGHTS (Latest 3 Real Published Posts)                        */}
       {/* ========================================================================= */}
-      <section id="latest-insights" className="py-20 md:py-28 bg-white border-t border-navy-100/60">
+      <section id="latest-insights" className="py-12 sm:py-16 md:py-24 bg-white border-t border-navy-100/60">
         <div className="container-wide">
           {/* Section Header */}
-          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-4 pb-8 mb-12 border-b border-navy-100">
-            <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-navy-950 tracking-tight">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 pb-6 sm:pb-8 mb-8 sm:mb-12 border-b border-navy-100">
+            <h2 className="font-serif text-2xl sm:text-4xl md:text-5xl font-bold text-navy-950 tracking-tight">
               Latest Insights
             </h2>
 
             <Link
               to="/blog"
-              className="inline-flex items-center gap-1.5 text-sm sm:text-base font-semibold text-navy-800 hover:text-gold-600 transition-colors group self-start sm:self-auto"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-base font-semibold text-navy-800 hover:text-gold-600 transition-colors group self-start sm:self-auto"
             >
               <span>View all</span>
               <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
@@ -196,7 +196,7 @@ export function HomePage() {
           </div>
 
           {/* Clean 3-Column Articles Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
             {latestArticles.map((article) => {
               const readTime = calculateReadingTime(article.content);
               const categoryName = article.category?.name || 'Insight';
@@ -228,7 +228,7 @@ export function HomePage() {
                   </Link>
 
                   {/* Card Content */}
-                  <div className="p-6 sm:p-7 flex flex-col flex-1">
+                  <div className="p-5 sm:p-7 flex flex-col flex-1">
                     {/* Category */}
                     <div className="mb-3">
                       <Link
@@ -240,7 +240,7 @@ export function HomePage() {
                     </div>
 
                     {/* Article Title */}
-                    <h3 className="font-serif text-xl sm:text-2xl font-bold text-navy-950 leading-snug mb-3 group-hover:text-navy-700 transition-colors">
+                    <h3 className="font-serif text-lg sm:text-2xl font-bold text-navy-950 leading-snug mb-2.5 sm:mb-3 group-hover:text-navy-700 transition-colors">
                       <Link to={`/blog/${article.slug}`}>
                         {article.title}
                       </Link>
@@ -248,13 +248,13 @@ export function HomePage() {
 
                     {/* Excerpt */}
                     {article.excerpt && (
-                      <p className="text-navy-600 text-sm leading-relaxed mb-6 line-clamp-3">
+                      <p className="text-navy-600 text-xs sm:text-sm leading-relaxed mb-5 sm:mb-6 line-clamp-3">
                         {article.excerpt}
                       </p>
                     )}
 
                     {/* Metadata Footer: Date & Reading Time */}
-                    <div className="mt-auto pt-4 border-t border-navy-100 flex items-center justify-between text-xs text-navy-500 font-medium">
+                    <div className="mt-auto pt-3.5 sm:pt-4 border-t border-navy-100 flex items-center justify-between text-xs text-navy-500 font-medium">
                       <span className="flex items-center gap-1.5">
                         <Calendar size={13} className="text-navy-400" />
                         {postDate}
@@ -271,12 +271,12 @@ export function HomePage() {
           </div>
 
           {/* Bottom Link for Mobile */}
-          <div className="mt-10 text-center sm:hidden">
+          <div className="mt-8 text-center sm:hidden">
             <Link
               to="/blog"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-navy-950 text-white font-medium text-sm w-full shadow-soft"
+              className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-navy-950 text-white font-medium text-sm w-full shadow-soft"
             >
-              <span>View all</span>
+              <span>View all insights</span>
               <ArrowRight size={16} />
             </Link>
           </div>

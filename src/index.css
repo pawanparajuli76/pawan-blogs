@@ -9,21 +9,25 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
   body {
     @apply font-sans text-navy-800 bg-white;
     line-height: 1.6;
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif text-navy-900;
     line-height: 1.2;
   }
-  h1 { @apply text-4xl md:text-5xl lg:text-6xl; }
-  h2 { @apply text-3xl md:text-4xl; }
-  h3 { @apply text-2xl md:text-3xl; }
-  h4 { @apply text-xl md:text-2xl; }
-  h5 { @apply text-lg md:text-xl; }
-  h6 { @apply text-base md:text-lg; }
+  h1 { @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl; }
+  h2 { @apply text-2xl sm:text-3xl md:text-4xl; }
+  h3 { @apply text-xl sm:text-2xl md:text-3xl; }
+  h4 { @apply text-lg sm:text-xl md:text-2xl; }
+  h5 { @apply text-base sm:text-lg md:text-xl; }
+  h6 { @apply text-sm sm:text-base md:text-lg; }
 }
 
 @layer components {
@@ -39,7 +43,7 @@
 
   /* Buttons */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-medium text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
   .btn-primary {
     @apply btn bg-navy-800 text-white hover:bg-navy-900 focus:ring-navy-700 shadow-soft hover:shadow-soft-lg;
@@ -54,10 +58,10 @@
     @apply btn text-navy-700 hover:bg-navy-50 focus:ring-navy-300;
   }
   .btn-sm {
-    @apply px-4 py-2 text-xs;
+    @apply px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs;
   }
   .btn-lg {
-    @apply px-8 py-4 text-base;
+    @apply px-6 sm:px-8 py-3 sm:py-4 text-sm sm:text-base;
   }
 
   /* Cards */
@@ -68,9 +72,9 @@
     @apply card hover:shadow-soft-lg hover:border-navy-200 hover:-translate-y-0.5;
   }
 
-  /* Inputs */
+  /* Inputs - Minimum 16px (text-base) on mobile to prevent iOS Safari auto-zoom */
   .input-field {
-    @apply w-full px-4 py-3 rounded-lg border border-navy-200 bg-white text-navy-800 placeholder-navy-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-navy-500;
+    @apply w-full px-4 py-3 rounded-lg border border-navy-200 bg-white text-navy-800 placeholder-navy-300 text-base sm:text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-navy-500;
   }
   .label-field {
     @apply block text-sm font-medium text-navy-700 mb-1.5;
@@ -92,15 +96,15 @@
 
   /* Section spacing */
   .section {
-    @apply py-16 md:py-24;
+    @apply py-10 sm:py-16 md:py-24;
   }
   .section-sm {
-    @apply py-10 md:py-14;
+    @apply py-6 sm:py-10 md:py-14;
   }
 
   /* Headings utility */
   .eyebrow {
-    @apply text-sm font-semibold uppercase tracking-wider text-gold-600;
+    @apply text-xs sm:text-sm font-semibold uppercase tracking-wider text-gold-600;
   }
 }
 
@@ -109,68 +113,68 @@
   @apply text-navy-700 leading-relaxed;
 }
 .prose-content p {
-  @apply mb-5 text-lg leading-relaxed;
+  @apply mb-5 text-base sm:text-lg leading-relaxed;
 }
 .prose-content h2 {
-  @apply text-2xl md:text-3xl mt-12 mb-4 font-serif text-navy-900 scroll-mt-24;
+  @apply text-xl sm:text-2xl md:text-3xl mt-10 sm:mt-12 mb-4 font-serif text-navy-900 scroll-mt-24;
 }
 .prose-content h3 {
-  @apply text-xl md:text-2xl mt-8 mb-3 font-serif text-navy-900 scroll-mt-24;
+  @apply text-lg sm:text-xl md:text-2xl mt-6 sm:mt-8 mb-3 font-serif text-navy-900 scroll-mt-24;
 }
 .prose-content h4 {
-  @apply text-lg md:text-xl mt-6 mb-2 font-serif text-navy-900 scroll-mt-24;
+  @apply text-base sm:text-lg md:text-xl mt-5 sm:mt-6 mb-2 font-serif text-navy-900 scroll-mt-24;
 }
 .prose-content ul {
-  @apply list-disc list-outside mb-5 pl-6 space-y-2;
+  @apply list-disc list-outside mb-5 pl-5 sm:pl-6 space-y-2;
 }
 .prose-content ol {
-  @apply list-decimal list-outside mb-5 pl-6 space-y-2;
+  @apply list-decimal list-outside mb-5 pl-5 sm:pl-6 space-y-2;
 }
 .prose-content li {
-  @apply text-lg leading-relaxed;
+  @apply text-base sm:text-lg leading-relaxed;
 }
 .prose-content blockquote {
-  @apply border-l-4 border-gold-400 bg-gold-50 pl-6 py-4 my-6 rounded-r-lg italic text-navy-700;
+  @apply border-l-4 border-gold-400 bg-gold-50 pl-4 sm:pl-6 py-3 sm:py-4 my-6 rounded-r-lg italic text-navy-700 text-base sm:text-lg;
 }
 .prose-content table {
-  @apply w-full my-8 border-collapse;
+  @apply w-full my-8 border-collapse block overflow-x-auto max-w-full;
 }
 .prose-content th {
-  @apply bg-navy-800 text-white px-4 py-3 text-left font-semibold border border-navy-700;
+  @apply bg-navy-800 text-white px-3 sm:px-4 py-2.5 sm:py-3 text-left font-semibold border border-navy-700 text-xs sm:text-sm whitespace-nowrap sm:whitespace-normal;
 }
 .prose-content td {
-  @apply px-4 py-3 border border-navy-200 text-base;
+  @apply px-3 sm:px-4 py-2.5 sm:py-3 border border-navy-200 text-xs sm:text-base;
 }
 .prose-content tr:nth-child(even) {
   @apply bg-navy-50;
 }
 .prose-content a {
-  @apply text-teal-700 underline hover:text-teal-800 font-medium;
+  @apply text-teal-700 underline hover:text-teal-800 font-medium break-words;
 }
 .prose-content code {
-  @apply bg-navy-100 text-navy-800 px-2 py-0.5 rounded text-sm font-mono;
+  @apply bg-navy-100 text-navy-800 px-2 py-0.5 rounded text-xs sm:text-sm font-mono break-words;
 }
 .prose-content pre {
-  @apply bg-navy-900 text-navy-100 p-4 rounded-lg overflow-x-auto my-6;
+  @apply bg-navy-900 text-navy-100 p-3 sm:p-4 rounded-lg overflow-x-auto my-6 max-w-full text-xs sm:text-sm;
 }
 .prose-content pre code {
   @apply bg-transparent text-inherit p-0;
 }
 .prose-content img {
-  @apply rounded-xl my-6 w-full;
+  @apply rounded-xl my-6 w-full h-auto;
 }
 .prose-content .callout {
-  @apply bg-teal-50 border-l-4 border-teal-500 pl-6 pr-4 py-4 my-6 rounded-r-lg;
+  @apply bg-teal-50 border-l-4 border-teal-500 pl-4 sm:pl-6 pr-3 sm:pr-4 py-3 sm:py-4 my-6 rounded-r-lg;
 }
 .prose-content .callout-title {
-  @apply font-semibold text-teal-800 mb-1;
+  @apply font-semibold text-teal-800 mb-1 text-sm sm:text-base;
 }
 .prose-content .callout p {
-  @apply mb-0 text-base;
+  @apply mb-0 text-sm sm:text-base;
 }
 .prose-content .important-note {
-  @apply bg-gold-50 border-l-4 border-gold-500 pl-6 pr-4 py-4 my-6 rounded-r-lg;
+  @apply bg-gold-50 border-l-4 border-gold-500 pl-4 sm:pl-6 pr-3 sm:pr-4 py-3 sm:py-4 my-6 rounded-r-lg;
 }
 .prose-content .important-note p {
-  @apply mb-0 text-base;
+  @apply mb-0 text-sm sm:text-base;
 }

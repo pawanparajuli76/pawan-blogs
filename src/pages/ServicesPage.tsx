@@ -74,23 +74,23 @@ export function ServicesPage() {
       {/* Services Grid */}
       <section className="section bg-white">
         <div className="container-wide">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {services.map((service) => {
               const Icon = service.icon;
               return (
                 <div
                   key={service.title}
-                  className="card-hover p-7 group"
+                  className="card-hover p-5 sm:p-7 group"
                 >
-                  <div className="flex items-start gap-5">
-                    <div className="w-14 h-14 bg-navy-800 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-gold-500 transition-colors duration-300">
-                      <Icon className="text-gold-400 group-hover:text-navy-900 transition-colors duration-300" size={26} />
+                  <div className="flex items-start gap-3.5 sm:gap-5">
+                    <div className="w-11 h-11 sm:w-14 sm:h-14 bg-navy-800 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-gold-500 transition-colors duration-300">
+                      <Icon className="text-gold-400 group-hover:text-navy-900 transition-colors duration-300 w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-serif font-semibold text-navy-900 mb-2">
+                      <h3 className="text-base sm:text-xl font-serif font-semibold text-navy-900 mb-1.5 sm:mb-2">
                         {service.title}
                       </h3>
-                      <p className="text-navy-600 leading-relaxed">
+                      <p className="text-xs sm:text-sm md:text-base text-navy-600 leading-relaxed">
                         {service.desc}
                       </p>
                     </div>
@@ -105,11 +105,11 @@ export function ServicesPage() {
       {/* Disclaimer */}
       <section className="section-sm bg-navy-50">
         <div className="container-narrow">
-          <div className="flex items-start gap-4 p-6 bg-white rounded-xl border border-gold-200">
-            <Info className="text-gold-600 flex-shrink-0 mt-1" size={22} />
+          <div className="flex items-start gap-3.5 sm:gap-4 p-4 sm:p-6 bg-white rounded-xl border border-gold-200">
+            <Info className="text-gold-600 flex-shrink-0 mt-0.5 sm:mt-1 w-5 h-5 sm:w-6 sm:h-6" />
             <div>
-              <h3 className="text-base font-semibold text-navy-900 mb-2">Service Availability Disclaimer</h3>
-              <p className="text-sm text-navy-600 leading-relaxed">
+              <h3 className="text-sm sm:text-base font-semibold text-navy-900 mb-1.5 sm:mb-2">Service Availability Disclaimer</h3>
+              <p className="text-xs sm:text-sm text-navy-600 leading-relaxed">
                 The availability of specific services may depend on professional engagement terms,
                 applicable Nepalese laws and regulations, and the nature of the assignment. This
                 page provides general information about service areas and does not constitute an
@@ -124,15 +124,15 @@ export function ServicesPage() {
       {/* CTA */}
       <section className="section bg-white">
         <div className="container-narrow">
-          <div className="bg-gradient-to-br from-navy-800 to-navy-900 rounded-2xl p-10 md:p-14 text-center shadow-soft-lg">
-            <h2 className="text-white text-3xl font-serif font-bold mb-4">
+          <div className="bg-gradient-to-br from-navy-800 to-navy-900 rounded-xl sm:rounded-2xl p-6 sm:p-10 md:p-14 text-center shadow-soft-lg">
+            <h2 className="text-white text-2xl sm:text-3xl font-serif font-bold mb-3 sm:mb-4">
               Ready to Get Started?
             </h2>
-            <p className="text-navy-200 text-lg mb-8 max-w-2xl mx-auto">
+            <p className="text-navy-200 text-sm sm:text-lg mb-6 sm:mb-8 max-w-2xl mx-auto">
               Contact me to discuss your professional needs and how I can assist you.
             </p>
-            <Link to="/contact" className="btn-accent btn-lg">
-              Contact Me
+            <Link to="/contact" className="btn-accent btn-lg w-full sm:w-auto inline-flex items-center justify-center">
+              <span>Contact Me</span>
               <ArrowRight size={18} />
             </Link>
           </div>
