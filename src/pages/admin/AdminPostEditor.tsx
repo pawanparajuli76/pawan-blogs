@@ -9,7 +9,10 @@ import {
   X,
   Bold,
   Italic,
+  Underline as UnderlineIcon,
+  Strikethrough as StrikeIcon,
   Link as LinkIcon,
+  Unlink as UnlinkIcon,
   List,
   ListOrdered,
   Heading2,
@@ -30,6 +33,15 @@ import {
   Type,
   FileText,
   Loader2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Indent as IndentIcon,
+  Outdent as OutdentIcon,
+  Highlighter,
+  Baseline,
+  ChevronDown,
 } from 'lucide-react';
 import mammoth from 'mammoth';
 import { supabase } from '@/lib/supabase';
@@ -67,10 +79,67 @@ const emptyForm: PostFormData = {
 interface ActiveFormats {
   bold: boolean;
   italic: boolean;
+  underline: boolean;
+  strike: boolean;
   ul: boolean;
   ol: boolean;
+  align: 'left' | 'center' | 'right' | 'justify';
+  fontFamily: string;
+  fontSize: string;
+  foreColor: string;
+  hiliteColor: string;
   block: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote' | null;
 }
+
+const FONT_FAMILIES = [
+  { label: 'Font Family', value: '' },
+  { label: 'Arial', value: 'Arial, sans-serif' },
+  { label: 'Helvetica', value: 'Helvetica, Arial, sans-serif' },
+  { label: 'Georgia', value: 'Georgia, serif' },
+  { label: 'Times New Roman', value: "'Times New Roman', Times, serif" },
+  { label: 'Verdana', value: 'Verdana, Geneva, sans-serif' },
+  { label: 'Trebuchet MS', value: "'Trebuchet MS', 'Lucida Sans Unicode', sans-serif" },
+  { label: 'Garamond', value: "Garamond, 'Baskerville', serif" },
+];
+
+const FONT_SIZES = [
+  { label: 'Font Size', value: '' },
+  { label: 'Small', value: '13px' },
+  { label: 'Normal', value: '16px' },
+  { label: 'Large', value: '22px' },
+  { label: '12', value: '12px' },
+  { label: '14', value: '14px' },
+  { label: '16', value: '16px' },
+  { label: '18', value: '18px' },
+  { label: '20', value: '20px' },
+  { label: '24', value: '24px' },
+  { label: '28', value: '28px' },
+  { label: '32', value: '32px' },
+  { label: '36', value: '36px' },
+  { label: '40', value: '40px' },
+  { label: '48', value: '48px' },
+];
+
+const TEXT_COLORS = [
+  { name: 'Theme Navy', color: '#0f172a' },
+  { name: 'Black', color: '#000000' },
+  { name: 'Dark Grey', color: '#475569' },
+  { name: 'Red', color: '#dc2626' },
+  { name: 'Blue', color: '#2563eb' },
+  { name: 'Green', color: '#16a34a' },
+  { name: 'Muted Gold', color: '#d97706' },
+  { name: 'Teal', color: '#0f766e' },
+];
+
+const HIGHLIGHT_COLORS = [
+  { name: 'None / Clear', color: 'transparent' },
+  { name: 'Yellow', color: '#fef08a' },
+  { name: 'Light Green', color: '#bbf7d0' },
+  { name: 'Light Blue', color: '#bfdbfe' },
+  { name: 'Light Red', color: '#fecaca' },
+  { name: 'Light Orange', color: '#fed7aa' },
+  { name: 'Light Purple', color: '#e9d5ff' },
+];
 
 export function AdminPostEditor() {
   const { id } = useParams<{ id: string }>();
@@ -80,6 +149,9 @@ export function AdminPostEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentFileInputRef = useRef<HTMLInputElement>(null);
   const docxFileInputRef = useRef<HTMLInputElement>(null);
+  const savedRangeRef = useRef<Range | null>(null);
+  const textColorPickerRef = useRef<HTMLDivElement>(null);
+  const highlightPickerRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState<PostFormData>(emptyForm);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -92,13 +164,40 @@ export function AdminPostEditor() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [importingDocx, setImportingDocx] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [showTextColorPicker, setShowTextColorPicker] = useState(false);
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const [customTextColor, setCustomTextColor] = useState('#0f172a');
+  const [customHighlightColor, setCustomHighlightColor] = useState('#fef08a');
+
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>({
     bold: false,
     italic: false,
+    underline: false,
+    strike: false,
     ul: false,
     ol: false,
+    align: 'left',
+    fontFamily: '',
+    fontSize: '',
+    foreColor: '#0f172a',
+    hiliteColor: '',
     block: 'p',
   });
+
+  // Close color pickers on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (textColorPickerRef.current && !textColorPickerRef.current.contains(e.target as Node)) {
+        setShowTextColorPicker(false);
+      }
+      if (highlightPickerRef.current && !highlightPickerRef.current.contains(e.target as Node)) {
+        setShowHighlightPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -169,6 +268,25 @@ export function AdminPostEditor() {
     }
   }, []);
 
+  const saveSelection = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+        savedRangeRef.current = range.cloneRange();
+      }
+    }
+  }, []);
+
+  const restoreSelection = useCallback((): boolean => {
+    if (!savedRangeRef.current) return false;
+    const sel = window.getSelection();
+    if (!sel) return false;
+    sel.removeAllRanges();
+    sel.addRange(savedRangeRef.current);
+    return true;
+  }, []);
+
   // Update active formatting states based on current selection
   const checkActiveFormats = useCallback(() => {
     if (!editorRef.current) return;
@@ -176,10 +294,21 @@ export function AdminPostEditor() {
     try {
       const bold = document.queryCommandState('bold');
       const italic = document.queryCommandState('italic');
+      const underline = document.queryCommandState('underline');
+      const strike = document.queryCommandState('strikeThrough');
       const ul = document.queryCommandState('insertUnorderedList');
       const ol = document.queryCommandState('insertOrderedList');
 
+      let align: 'left' | 'center' | 'right' | 'justify' = 'left';
+      if (document.queryCommandState('justifyCenter')) align = 'center';
+      else if (document.queryCommandState('justifyRight')) align = 'right';
+      else if (document.queryCommandState('justifyFull')) align = 'justify';
+
       let block: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote' | null = 'p';
+      let fontFamily = '';
+      let fontSize = '';
+      let foreColor = '#0f172a';
+      let hiliteColor = '';
 
       const selection = window.getSelection();
       if (selection && selection.rangeCount > 0) {
@@ -189,43 +318,69 @@ export function AdminPostEditor() {
         }
 
         while (node && node !== editorRef.current) {
-          const tag = (node as HTMLElement).tagName?.toLowerCase();
+          const el = node as HTMLElement;
+          const tag = el.tagName?.toLowerCase();
+
           if (tag === 'h2') {
             block = 'h2';
-            break;
           } else if (tag === 'h3') {
             block = 'h3';
-            break;
           } else if (tag === 'h4') {
             block = 'h4';
-            break;
           } else if (tag === 'blockquote') {
             block = 'blockquote';
-            break;
-          } else if (tag === 'p') {
-            block = 'p';
-            break;
           }
+
+          if (!fontFamily && el.style?.fontFamily) {
+            fontFamily = el.style.fontFamily;
+          }
+          if (!fontSize && el.style?.fontSize) {
+            fontSize = el.style.fontSize;
+          }
+          if (el.style?.color) {
+            foreColor = el.style.color;
+          }
+          if (el.style?.backgroundColor) {
+            hiliteColor = el.style.backgroundColor;
+          }
+
           node = node.parentNode;
         }
       }
 
-      setActiveFormats({ bold, italic, ul, ol, block });
+      setActiveFormats({
+        bold,
+        italic,
+        underline,
+        strike,
+        ul,
+        ol,
+        align,
+        fontFamily,
+        fontSize,
+        foreColor,
+        hiliteColor,
+        block,
+      });
     } catch {
-      // Ignore queryCommandState failures on blur
+      // Ignore queryCommandState failures
     }
   }, []);
 
   const execCommand = (command: string, value?: string) => {
+    document.execCommand('styleWithCSS', false, 'true');
     document.execCommand(command, false, value);
     editorRef.current?.focus();
+    saveSelection();
     updateContent();
     checkActiveFormats();
   };
 
   const insertHTML = (html: string) => {
+    document.execCommand('styleWithCSS', false, 'true');
     document.execCommand('insertHTML', false, html);
     editorRef.current?.focus();
+    saveSelection();
     updateContent();
     checkActiveFormats();
   };
@@ -233,14 +388,109 @@ export function AdminPostEditor() {
   const handleHeading = (tag: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote') => {
     document.execCommand('formatBlock', false, tag);
     editorRef.current?.focus();
+    saveSelection();
     updateContent();
     checkActiveFormats();
+  };
+
+  const handleFontFamily = (fontFamilyVal: string) => {
+    restoreSelection();
+    editorRef.current?.focus();
+    if (fontFamilyVal) {
+      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand('fontName', false, fontFamilyVal);
+    }
+    saveSelection();
+    updateContent();
+    checkActiveFormats();
+  };
+
+  const handleFontSize = (sizeVal: string) => {
+    if (!sizeVal) return;
+    restoreSelection();
+    editorRef.current?.focus();
+
+    let targetPx = sizeVal;
+    if (sizeVal === 'small') targetPx = '13px';
+    else if (sizeVal === 'normal') targetPx = '16px';
+    else if (sizeVal === 'large') targetPx = '22px';
+    else if (!sizeVal.endsWith('px') && !sizeVal.endsWith('rem') && !sizeVal.endsWith('em')) {
+      targetPx = `${sizeVal}px`;
+    }
+
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+
+    if (range.collapsed) {
+      const span = document.createElement('span');
+      span.style.fontSize = targetPx;
+      span.innerHTML = '&#8203;';
+      range.insertNode(span);
+      const newRange = document.createRange();
+      newRange.setStart(span.firstChild || span, 1);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    } else {
+      document.execCommand('styleWithCSS', false, 'true');
+      document.execCommand('fontSize', false, '7');
+      if (editorRef.current) {
+        const elements = editorRef.current.querySelectorAll(
+          'font[size="7"], span[style*="xxx-large"], span[style*="-webkit-xxx-large"]'
+        );
+        elements.forEach((el) => {
+          (el as HTMLElement).style.fontSize = targetPx;
+          (el as HTMLElement).removeAttribute('size');
+        });
+      }
+    }
+
+    saveSelection();
+    updateContent();
+    checkActiveFormats();
+  };
+
+  const handleTextColor = (color: string) => {
+    if (!color) return;
+    restoreSelection();
+    editorRef.current?.focus();
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand('foreColor', false, color);
+    saveSelection();
+    updateContent();
+    checkActiveFormats();
+    setShowTextColorPicker(false);
+  };
+
+  const handleHighlightColor = (color: string) => {
+    if (!color) return;
+    restoreSelection();
+    editorRef.current?.focus();
+    document.execCommand('styleWithCSS', false, 'true');
+    if (color === 'transparent' || color === 'none') {
+      document.execCommand('hiliteColor', false, 'transparent');
+      document.execCommand('backColor', false, 'transparent');
+    } else {
+      try {
+        if (!document.execCommand('hiliteColor', false, color)) {
+          document.execCommand('backColor', false, color);
+        }
+      } catch {
+        document.execCommand('backColor', false, color);
+      }
+    }
+    saveSelection();
+    updateContent();
+    checkActiveFormats();
+    setShowHighlightPicker(false);
   };
 
   const handleClearFormatting = () => {
     document.execCommand('removeFormat', false);
     document.execCommand('formatBlock', false, 'p');
     editorRef.current?.focus();
+    saveSelection();
     updateContent();
     checkActiveFormats();
     setToastMessage('Formatting cleared');
@@ -265,7 +515,6 @@ export function AdminPostEditor() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset input so user can import the same file again if desired
     e.target.value = '';
 
     if (!file.name.toLowerCase().endsWith('.docx')) {
@@ -281,11 +530,10 @@ export function AdminPostEditor() {
 
       let rawHtml = '';
       try {
-        // 1. High-fidelity OpenXML converter: Preserves exact text colors, heading numbering (e.g. 1. IPO Reform, 2. Strengthening...), fonts, bold/italic, tables & spacing
+        // High-fidelity OpenXML converter: Preserves exact text colors, heading numbering (e.g. 1. IPO Reform, 2. Strengthening...), fonts, bold/italic, tables & spacing
         rawHtml = await convertDocxToHtml(arrayBuffer);
       } catch (docxErr) {
         console.warn('OpenXML parser fallback to Mammoth:', docxErr);
-        // Fallback: Mammoth
         const result = await mammoth.convertToHtml(
           { arrayBuffer },
           {
@@ -490,7 +738,7 @@ export function AdminPostEditor() {
         ? undefined
         : publish ? new Date().toISOString() : null;
 
-    // Clean content one final time before saving to ensure 100% clean markup
+    // Clean content one final time before saving to ensure clean markup
     const cleanedContent = form.content ? cleanWordHtml(form.content) : null;
 
     const postData: Record<string, unknown> = {
@@ -524,7 +772,6 @@ export function AdminPostEditor() {
         return;
       }
     } else {
-      // Get author_id from profiles
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
@@ -694,7 +941,7 @@ export function AdminPostEditor() {
 
           {/* Content Editor */}
           <div className="space-y-2">
-            {/* Header above editor with Import Word Document button */}
+            {/* Header above editor with single Word Import button */}
             <div className="flex flex-wrap items-center justify-between gap-2 px-1">
               <label className="label-field mb-0 font-medium text-navy-800">Article Content</label>
               <button
@@ -712,245 +959,563 @@ export function AdminPostEditor() {
               </button>
             </div>
 
-            <div className="card overflow-hidden">
-              {/* Rich Text Toolbar */}
-              <div className="flex flex-wrap items-center gap-1.5 p-2.5 border-b border-navy-100 bg-navy-50/80">
-                {/* History: Undo / Redo */}
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                  <button
-                    type="button"
-                    onClick={() => execCommand('undo')}
-                    title="Undo (Ctrl+Z)"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <Undo size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => execCommand('redo')}
-                    title="Redo (Ctrl+Y)"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <Redo size={16} />
-                  </button>
+            <div className="card relative overflow-visible border border-navy-200">
+              {/* Sticky Rich Text Toolbar (Pinned below admin layout header at top-16) */}
+              <div className="sticky top-16 z-20 bg-white/95 backdrop-blur-md rounded-t-xl border-b border-navy-200 shadow-2xs">
+                <div className="flex flex-wrap items-center gap-1 p-2">
+                  {/* Group 1: Undo / Redo */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('undo');
+                      }}
+                      title="Undo (Ctrl+Z)"
+                      className="p-1.5 rounded-md text-navy-600 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <Undo size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('redo');
+                      }}
+                      title="Redo (Ctrl+Y)"
+                      className="p-1.5 rounded-md text-navy-600 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <Redo size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 2: Headings & Block Hierarchy */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleHeading('p');
+                      }}
+                      title="Paragraph (Normal Text)"
+                      className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                        activeFormats.block === 'p'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Type size={14} />
+                      <span>Para</span>
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleHeading('h2');
+                      }}
+                      title="Heading 2 (Main Section)"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.block === 'h2'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Heading2 size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleHeading('h3');
+                      }}
+                      title="Heading 3 (Sub Section)"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.block === 'h3'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Heading3 size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleHeading('h4');
+                      }}
+                      title="Heading 4 (Minor Section)"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.block === 'h4'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Heading4 size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleHeading('blockquote');
+                      }}
+                      title="Blockquote"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.block === 'blockquote'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Quote size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 3: Font Family Dropdown */}
+                  <div className="flex items-center pr-1.5 border-r border-navy-200">
+                    <select
+                      value={activeFormats.fontFamily || ''}
+                      onFocus={saveSelection}
+                      onChange={(e) => handleFontFamily(e.target.value)}
+                      title="Font Family"
+                      className="text-xs h-7.5 bg-white border border-navy-200 rounded-md px-2 py-0 text-navy-800 focus:outline-none focus:ring-1 focus:ring-navy-400 max-w-[110px] sm:max-w-[130px] truncate"
+                    >
+                      {FONT_FAMILIES.map((f) => (
+                        <option key={f.label} value={f.value} style={{ fontFamily: f.value || 'inherit' }}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Group 4: Font Size Dropdown */}
+                  <div className="flex items-center pr-1.5 border-r border-navy-200">
+                    <select
+                      value={activeFormats.fontSize || ''}
+                      onFocus={saveSelection}
+                      onChange={(e) => handleFontSize(e.target.value)}
+                      title="Font Size"
+                      className="text-xs h-7.5 bg-white border border-navy-200 rounded-md px-1.5 py-0 text-navy-800 focus:outline-none focus:ring-1 focus:ring-navy-400 max-w-[85px] sm:max-w-[95px] truncate"
+                    >
+                      {FONT_SIZES.map((s) => (
+                        <option key={s.label} value={s.value}>
+                          {s.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Group 5: Inline Styles (Bold, Italic, Underline, Strike) */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('bold');
+                      }}
+                      title="Bold (Ctrl+B)"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.bold
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Bold size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('italic');
+                      }}
+                      title="Italic (Ctrl+I)"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.italic
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <Italic size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('underline');
+                      }}
+                      title="Underline (Ctrl+U)"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.underline
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <UnderlineIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('strikeThrough');
+                      }}
+                      title="Strikethrough"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.strike
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <StrikeIcon size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 6: Text Color & Highlight Color */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    {/* Text Color Picker */}
+                    <div className="relative" ref={textColorPickerRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          saveSelection();
+                          setShowTextColorPicker((prev) => !prev);
+                          setShowHighlightPicker(false);
+                        }}
+                        title="Text Color"
+                        className="flex items-center gap-0.5 p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                      >
+                        <Baseline size={15} />
+                        <span
+                          className="w-3 h-1 rounded-sm block -mt-0.5"
+                          style={{ backgroundColor: activeFormats.foreColor || '#0f172a' }}
+                        />
+                        <ChevronDown size={10} className="text-navy-400" />
+                      </button>
+
+                      {showTextColorPicker && (
+                        <div className="absolute top-full left-0 mt-1.5 p-2.5 bg-white rounded-lg shadow-soft-lg border border-navy-200 z-30 w-48 animate-fadeIn">
+                          <div className="text-[11px] font-semibold text-navy-500 uppercase tracking-wider mb-2">
+                            Text Color
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+                            {TEXT_COLORS.map((item) => (
+                              <button
+                                key={item.name}
+                                type="button"
+                                onClick={() => handleTextColor(item.color)}
+                                title={item.name}
+                                className="w-7 h-7 rounded-md border border-navy-200 flex items-center justify-center transition-transform hover:scale-110"
+                                style={{ backgroundColor: item.color }}
+                              />
+                            ))}
+                          </div>
+                          <div className="pt-2 border-t border-navy-100 flex items-center justify-between gap-2">
+                            <span className="text-xs text-navy-600">Custom:</span>
+                            <input
+                              type="color"
+                              value={customTextColor}
+                              onChange={(e) => {
+                                setCustomTextColor(e.target.value);
+                                handleTextColor(e.target.value);
+                              }}
+                              className="w-7 h-7 p-0 rounded border border-navy-300 cursor-pointer bg-transparent"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Highlight Color Picker */}
+                    <div className="relative" ref={highlightPickerRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          saveSelection();
+                          setShowHighlightPicker((prev) => !prev);
+                          setShowTextColorPicker(false);
+                        }}
+                        title="Highlight Color"
+                        className="flex items-center gap-0.5 p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                      >
+                        <Highlighter size={15} />
+                        <span
+                          className="w-3 h-1 rounded-sm block -mt-0.5"
+                          style={{ backgroundColor: activeFormats.hiliteColor || '#fef08a' }}
+                        />
+                        <ChevronDown size={10} className="text-navy-400" />
+                      </button>
+
+                      {showHighlightPicker && (
+                        <div className="absolute top-full left-0 mt-1.5 p-2.5 bg-white rounded-lg shadow-soft-lg border border-navy-200 z-30 w-48 animate-fadeIn">
+                          <div className="text-[11px] font-semibold text-navy-500 uppercase tracking-wider mb-2">
+                            Highlight
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5 mb-2.5">
+                            {HIGHLIGHT_COLORS.map((item) => (
+                              <button
+                                key={item.name}
+                                type="button"
+                                onClick={() => handleHighlightColor(item.color)}
+                                title={item.name}
+                                className="w-7 h-7 rounded-md border border-navy-200 flex items-center justify-center text-[10px] font-medium transition-transform hover:scale-110"
+                                style={{ backgroundColor: item.color }}
+                              >
+                                {item.color === 'transparent' ? '✕' : ''}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="pt-2 border-t border-navy-100 flex items-center justify-between gap-2">
+                            <span className="text-xs text-navy-600">Custom:</span>
+                            <input
+                              type="color"
+                              value={customHighlightColor}
+                              onChange={(e) => {
+                                setCustomHighlightColor(e.target.value);
+                                handleHighlightColor(e.target.value);
+                              }}
+                              className="w-7 h-7 p-0 rounded border border-navy-300 cursor-pointer bg-transparent"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Group 7: Alignment */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('justifyLeft');
+                      }}
+                      title="Align Left"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.align === 'left'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <AlignLeft size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('justifyCenter');
+                      }}
+                      title="Align Center"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.align === 'center'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <AlignCenter size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('justifyRight');
+                      }}
+                      title="Align Right"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.align === 'right'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <AlignRight size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('justifyFull');
+                      }}
+                      title="Justify"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.align === 'justify'
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <AlignJustify size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 8: Indent / Outdent & Lists */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('outdent');
+                      }}
+                      title="Decrease Indent"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <OutdentIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('indent');
+                      }}
+                      title="Increase Indent"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <IndentIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('insertUnorderedList');
+                      }}
+                      title="Bulleted List"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.ul
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <List size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('insertOrderedList');
+                      }}
+                      title="Numbered List"
+                      className={`p-1.5 rounded-md transition-colors ${
+                        activeFormats.ol
+                          ? 'bg-navy-800 text-white shadow-xs'
+                          : 'text-navy-700 hover:bg-navy-100 hover:text-navy-900'
+                      }`}
+                    >
+                      <ListOrdered size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 9: Inserts (Link, Unlink, Table, Image, Code Block) */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertLink();
+                      }}
+                      title="Insert / Edit Link"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <LinkIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        execCommand('unlink');
+                      }}
+                      title="Remove Link"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <UnlinkIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertTable();
+                      }}
+                      title="Insert Table"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <TableIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        contentFileInputRef.current?.click();
+                      }}
+                      title="Insert Image"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <ImageIcon size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertCodeBlock();
+                      }}
+                      title="Code Block"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <Code size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 10: Callouts & Clear Formatting */}
+                  <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertCallout();
+                      }}
+                      title="Callout Box (Teal)"
+                      className="p-1.5 rounded-md text-teal-700 hover:bg-teal-50 transition-colors"
+                    >
+                      <Lightbulb size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertImportantNote();
+                      }}
+                      title="Important Note Box (Gold)"
+                      className="p-1.5 rounded-md text-gold-700 hover:bg-gold-50 transition-colors"
+                    >
+                      <AlertCircle size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleClearFormatting();
+                      }}
+                      title="Clear Formatting"
+                      className="p-1.5 rounded-md text-navy-700 hover:bg-navy-100 hover:text-navy-900 transition-colors"
+                    >
+                      <Eraser size={15} />
+                    </button>
+                  </div>
+
+                  {/* Group 11: Clean Word Markup Quick Action */}
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <button
+                      type="button"
+                      onClick={handleCleanAllWordFormatting}
+                      title="Sanitize & normalize all Word formatting in the article"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-navy-700 bg-navy-50 border border-navy-200 rounded-md hover:bg-navy-100 hover:text-navy-950 transition-colors shadow-2xs"
+                    >
+                      <Sparkles size={13} className="text-gold-500" />
+                      <span className="hidden sm:inline">Clean Word Markup</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Block Formats: Paragraph, H2, H3, H4, Quote */}
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                  <button
-                    type="button"
-                    onClick={() => handleHeading('p')}
-                    title="Paragraph (Normal Text)"
-                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
-                      activeFormats.block === 'p'
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Type size={14} />
-                    <span>Para</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleHeading('h2')}
-                    title="Heading 2 (Main Section)"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.block === 'h2'
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Heading2 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleHeading('h3')}
-                    title="Heading 3 (Sub Section)"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.block === 'h3'
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Heading3 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleHeading('h4')}
-                    title="Heading 4 (Minor Section)"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.block === 'h4'
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Heading4 size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleHeading('blockquote')}
-                    title="Blockquote"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.block === 'blockquote'
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Quote size={16} />
-                  </button>
+                {/* Sub-bar / Tip indicator */}
+                <div className="px-3.5 py-1 bg-navy-50/60 border-t border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                    <span>Rich Text Editor with Word (.docx) &amp; Google Docs paste support</span>
+                  </span>
+                  <span className="text-navy-400 hidden md:inline">Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Z supported</span>
                 </div>
-
-                {/* Inline Formatting: Bold, Italic, Clear Formatting */}
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                  <button
-                    type="button"
-                    onClick={() => execCommand('bold')}
-                    title="Bold (Ctrl+B)"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.bold
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Bold size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => execCommand('italic')}
-                    title="Italic (Ctrl+I)"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.italic
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <Italic size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClearFormatting}
-                    title="Clear Formatting"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <Eraser size={16} />
-                  </button>
-                </div>
-
-                {/* Lists: Bullet, Numbered */}
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                  <button
-                    type="button"
-                    onClick={() => execCommand('insertUnorderedList')}
-                    title="Bullet List"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.ul
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <List size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => execCommand('insertOrderedList')}
-                    title="Numbered List"
-                    className={`p-1.5 rounded-md transition-colors ${
-                      activeFormats.ol
-                        ? 'bg-navy-800 text-white shadow-xs'
-                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                    }`}
-                  >
-                    <ListOrdered size={16} />
-                  </button>
-                </div>
-
-                {/* Inserts: Link, Table, Image, Code */}
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                  <button
-                    type="button"
-                    onClick={insertLink}
-                    title="Insert Hyperlink"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <LinkIcon size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={insertTable}
-                    title="Insert Table"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <TableIcon size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => contentFileInputRef.current?.click()}
-                    title="Insert Image"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <ImageIcon size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={insertCodeBlock}
-                    title="Code Block"
-                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <Code size={16} />
-                  </button>
-                </div>
-
-                {/* Callouts */}
-                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                  <button
-                    type="button"
-                    onClick={insertCallout}
-                    title="Callout Box (Teal)"
-                    className="p-1.5 rounded-md text-teal-700 hover:bg-teal-50 transition-colors"
-                  >
-                    <Lightbulb size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={insertImportantNote}
-                    title="Important Note Box (Gold)"
-                    className="p-1.5 rounded-md text-gold-700 hover:bg-gold-50 transition-colors"
-                  >
-                    <AlertCircle size={16} />
-                  </button>
-                </div>
-
-                {/* Word Import & Sanitizer Quick Actions */}
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <button
-                    type="button"
-                    onClick={() => docxFileInputRef.current?.click()}
-                    disabled={importingDocx}
-                    title="Import Word Document (.docx)"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-teal-800 bg-teal-50/80 border border-teal-200 rounded-md hover:bg-teal-100 hover:text-teal-950 transition-colors shadow-2xs"
-                  >
-                    <FileText size={13} className="text-teal-700" />
-                    <span>{importingDocx ? 'Importing...' : 'Import .docx'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCleanAllWordFormatting}
-                    title="Sanitize & clean all Word / inline formatting in editor"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-navy-700 bg-white border border-navy-200 rounded-md hover:bg-navy-100 hover:text-navy-900 transition-colors shadow-2xs"
-                  >
-                    <Sparkles size={13} className="text-gold-500" />
-                    <span>Clean Word Markup</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Word Paste Info Badge */}
-              <div className="px-4 py-1.5 bg-navy-50/50 border-b border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                  <span>Word Import (.docx) &amp; Auto-Sanitizer Active (converts Word headings, lists &amp; tables to site styling)</span>
-                </span>
-                <span className="text-navy-400 hidden sm:inline">Tip: Import .docx directly or copy/paste from Word</span>
               </div>
 
               {/* Editor Content Area */}
@@ -959,9 +1524,15 @@ export function AdminPostEditor() {
                 contentEditable
                 onInput={updateContent}
                 onPaste={handlePaste}
-                onKeyUp={checkActiveFormats}
-                onMouseUp={checkActiveFormats}
-                className="prose-content min-h-[440px] p-6 focus:outline-none"
+                onKeyUp={() => {
+                  saveSelection();
+                  checkActiveFormats();
+                }}
+                onMouseUp={() => {
+                  saveSelection();
+                  checkActiveFormats();
+                }}
+                className="prose-content min-h-[460px] p-6 focus:outline-none"
                 data-placeholder="Start writing, import a Word .docx document, or paste from Word..."
                 style={{ ['--tw-prose-body' as string]: 'initial' }}
               />
