@@ -1,9 +1,9 @@
 /**
  * Microsoft Word & Rich-Text Paste Sanitizer
  * 
- * Cleans Word-specific HTML, inline fonts, sizes, colors, Mso classes, XML tags,
- * and pseudo-lists, while preserving semantic document structure (H2-H4, P, Strong, Em,
- * Lists, Blockquotes, Links, Tables, Callouts).
+ * Preserves Word formatting, fonts, font sizes, text colors, background colors,
+ * text alignment, spans, and styles while cleaning up XML tags (<o:p>, <w:...>, <v:...>),
+ * Office comments, and broken local file links.
  */
 
 /**
@@ -54,7 +54,8 @@ function escapeHtml(str: string): string {
 }
 
 /**
- * Sanitizes and cleans Microsoft Word or general rich-text HTML.
+ * Sanitizes and cleans Microsoft Word or general rich-text HTML while
+ * fully preserving Word styles, fonts, font sizes, colors, and formatting.
  */
 export function cleanWordHtml(rawHtml: string): string {
   if (!rawHtml || typeof rawHtml !== 'string') return '';
@@ -72,9 +73,7 @@ export function cleanWordHtml(rawHtml: string): string {
   html = html.replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '');
 
   // 2. Preserve bullet and number markers from Word supportLists comments before stripping comments
-  // E.g. <!--[if !supportLists]><span style="...">1.<span><![endif]--> -> <span>1. </span>
   html = html.replace(/<!--\[if\s*!supportLists[^>]*>([\s\S]*?)<!\[endif\]-->/gi, (_match, p1) => {
-    // Extract pure text / bullet symbols from within the comment
     const textMarker = p1.replace(/<[^>]*>/g, '').trim();
     return textMarker ? `<span class="word-list-marker">${textMarker} </span>` : '';
   });
@@ -99,39 +98,39 @@ export function cleanWordHtml(rawHtml: string): string {
 
   if (!body) return '';
 
-  // Unwrap wrapper divs (e.g. div.WordSection1, section divs) so blocks are properly structured
+  // Unwrap wrapper divs (e.g. div.WordSection1) so blocks are properly structured
   unwrapStructuralDivs(body);
 
   // Group consecutive MsoListParagraph or bullet/numbered paragraphs into proper <ul> / <ol>
   reconstructLists(body);
 
-  // Process DOM elements recursively
+  // Process DOM elements recursively while keeping styles and formatting intact
   processNode(body);
 
-  // Final cleanup pass for empty nodes, span unwrapping, and semantic normalization
+  // Final cleanup pass for empty nodes and tags
   cleanupDomTree(body);
 
-  // Format and trim clean output
+  // Format output
   let result = body.innerHTML;
 
   // Clean whitespace inside heading and block tags
   result = result.replace(/<(h[2-4]|p|blockquote|li)>\s*([\s\S]*?)\s*<\/\1>/gi, '<$1>$2</$1>');
-  // Remove empty paragraphs or whitespace-only blocks
+  // Remove completely empty paragraphs
   result = result.replace(/<p>(\s|&nbsp;|<br\s*\/?>)*<\/p>/gi, '');
-  // Clean multiple sequential line breaks
+  // Clean excessive sequential line breaks
   result = result.replace(/(<br\s*\/?>\s*){3,}/gi, '<br /><br />');
 
   return result.trim();
 }
 
 /**
- * Unwraps non-semantic wrapper divs (like WordSection1) so child block elements are directly accessible.
+ * Unwraps non-semantic wrapper divs (like WordSection1) while retaining their children.
  */
 function unwrapStructuralDivs(root: HTMLElement) {
   const divs = Array.from(root.querySelectorAll('div, section, article'));
   for (const div of divs) {
     const className = div.className || '';
-    if (!className.includes('callout') && !className.includes('important-note')) {
+    if (!className.includes('callout') && !className.includes('important-note') && !div.getAttribute('style')) {
       unwrapElement(div);
     }
   }
@@ -141,7 +140,6 @@ function unwrapStructuralDivs(root: HTMLElement) {
  * Reconstructs lists from Word pseudo-list paragraphs (<p class="MsoListParagraph"> or bullet markers).
  */
 function reconstructLists(container: HTMLElement) {
-  // Also run on any nested containers (e.g. blockquotes)
   const nestedContainers = [container, ...Array.from(container.querySelectorAll('blockquote, div'))];
 
   for (const parent of nestedContainers) {
@@ -156,7 +154,6 @@ function reconstructLists(container: HTMLElement) {
       const style = child.getAttribute('style') || '';
       const text = child.textContent?.trim() || '';
 
-      // Check if element is a list paragraph or starts with list bullet/number marker
       const isMsoList = /MsoListParagraph/i.test(className) || /mso-list:/i.test(style);
       const bulletMatch = text.match(/^([•·\u2022\u00b7\u25cf\u25aa\u2013\u2014\-*]|\(?[0-9a-zA-Z]+[\.\)])\s+/);
 
@@ -179,6 +176,10 @@ function reconstructLists(container: HTMLElement) {
 
         // Create <li>
         const li = child.ownerDocument.createElement('li');
+        // Preserve any inline styles on the list item
+        if (style) {
+          li.setAttribute('style', style);
+        }
         li.innerHTML = child.innerHTML;
         stripLeadingBulletMarker(li);
 
@@ -196,12 +197,14 @@ function reconstructLists(container: HTMLElement) {
  * Normalizes <li> elements inside standard <ul> and <ol> tags.
  */
 function normalizeListItems(listEl: HTMLElement) {
-  cleanAttributes(listEl, []);
   const items = Array.from(listEl.querySelectorAll('li'));
   for (const li of items) {
-    cleanAttributes(li, []);
     if (li.children.length === 1 && li.firstElementChild?.tagName.toLowerCase() === 'p') {
-      const p = li.firstElementChild;
+      const p = li.firstElementChild as HTMLElement;
+      const pStyle = p.getAttribute('style');
+      if (pStyle && !li.getAttribute('style')) {
+        li.setAttribute('style', pStyle);
+      }
       li.innerHTML = p.innerHTML;
     }
     stripLeadingBulletMarker(li);
@@ -212,7 +215,6 @@ function normalizeListItems(listEl: HTMLElement) {
  * Strips leading bullet markers like "• ", "1. ", "· " from list items.
  */
 function stripLeadingBulletMarker(li: HTMLElement) {
-  // Remove any word-list-marker spans first
   const markers = li.querySelectorAll('.word-list-marker');
   markers.forEach((m) => m.remove());
 
@@ -236,7 +238,7 @@ function stripLeadingBulletMarker(li: HTMLElement) {
 }
 
 /**
- * Recursively processes DOM nodes to strip styles, attributes, and normalize tags.
+ * Recursively processes DOM nodes while preserving fonts, styles, colors, and formatting.
  */
 function processNode(node: Node) {
   if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -250,77 +252,45 @@ function processNode(node: Node) {
     processNode(child);
   }
 
-  // 1. Heading mapping
+  // 1. Heading mapping (preserves styles/fonts/colors on headings)
   const className = el.className || '';
   const isMsoTitle = /MsoTitle|MsoSubtitle/i.test(className);
-  const isMsoH1 = /MsoHeading1/i.test(className) || tagName === 'h1';
-  const isMsoH2 = /MsoHeading2/i.test(className) || tagName === 'h2';
-  const isMsoH3 = /MsoHeading3/i.test(className) || tagName === 'h3';
-  const isMsoH4 = /MsoHeading4|MsoHeading5|MsoHeading6/i.test(className) || ['h4', 'h5', 'h6'].includes(tagName);
+  const isMsoH1 = /MsoHeading1/i.test(className);
+  const isMsoH2 = /MsoHeading2/i.test(className);
+  const isMsoH3 = /MsoHeading3/i.test(className);
+  const isMsoH4 = /MsoHeading4|MsoHeading5|MsoHeading6/i.test(className);
 
-  if (isMsoTitle || isMsoH1) {
+  if (isMsoTitle || isMsoH1 || tagName === 'h1') {
     replaceTagName(el, 'h2');
     return;
   } else if (isMsoH2) {
     replaceTagName(el, 'h3');
     return;
-  } else if (isMsoH3 || isMsoH4) {
+  } else if (isMsoH3 || isMsoH4 || tagName === 'h5' || tagName === 'h6') {
     replaceTagName(el, 'h4');
     return;
   }
 
-  // 2. Bold / Italic conversion
-  const style = el.getAttribute('style') || '';
-  const isBold =
-    tagName === 'b' ||
-    tagName === 'strong' ||
-    /font-weight\s*:\s*(bold|[7-9]00)/i.test(style);
-  const isItalic =
-    tagName === 'i' ||
-    tagName === 'em' ||
-    /font-style\s*:\s*italic/i.test(style);
-
-  if (tagName === 'span' || tagName === 'font') {
-    if (isBold && isItalic) {
-      const strong = el.ownerDocument.createElement('strong');
-      const em = el.ownerDocument.createElement('em');
-      while (el.firstChild) {
-        em.appendChild(el.firstChild);
-      }
-      strong.appendChild(em);
-      el.parentNode?.replaceChild(strong, el);
-      return;
-    } else if (isBold) {
-      replaceTagName(el, 'strong');
-      return;
-    } else if (isItalic) {
-      replaceTagName(el, 'em');
-      return;
-    }
-  }
-
-  if (tagName === 'b') {
-    replaceTagName(el, 'strong');
-    return;
-  }
-  if (tagName === 'i') {
-    replaceTagName(el, 'em');
-    return;
-  }
-
-  // 3. Blockquote detection
+  // 2. Blockquote detection
   if (/MsoQuote|Quote/i.test(className)) {
     replaceTagName(el, 'blockquote');
     return;
   }
 
-  // 4. Table cell normalization
+  // 3. Table cell paragraph unwrap
   if (tagName === 'th' || tagName === 'td') {
-    cleanAttributes(el, ['colspan', 'rowspan']);
+    if (el.children.length === 1 && el.firstElementChild?.tagName.toLowerCase() === 'p') {
+      const p = el.firstElementChild as HTMLElement;
+      const pStyle = p.getAttribute('style');
+      if (pStyle && !el.getAttribute('style')) {
+        el.setAttribute('style', pStyle);
+      }
+      el.innerHTML = p.innerHTML;
+    }
     return;
   }
 
-  // 5. Link normalization
+  // 4. Link normalization
   if (tagName === 'a') {
     const href = el.getAttribute('href');
     const name = el.getAttribute('name');
@@ -331,7 +301,6 @@ function processNode(node: Node) {
     }
 
     if (href && !href.startsWith('file://')) {
-      cleanAttributes(el, ['href', 'target', 'rel', 'title']);
       if (href.startsWith('http://') || href.startsWith('https://')) {
         el.setAttribute('target', '_blank');
         el.setAttribute('rel', 'noopener noreferrer');
@@ -343,49 +312,29 @@ function processNode(node: Node) {
     return;
   }
 
-  // 6. Image normalization
+  // 5. Image normalization
   if (tagName === 'img') {
     const src = el.getAttribute('src');
-    if (src && (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:image'))) {
-      cleanAttributes(el, ['src', 'alt', 'title']);
-    } else {
+    if (!src || src.startsWith('file://')) {
       el.remove();
       return;
     }
     return;
   }
-
-  // 7. Retain custom UI components if present
-  if (className.includes('callout') || className.includes('important-note')) {
-    cleanAttributes(el, ['class']);
-    return;
-  }
 }
 
 /**
- * Cleans attributes from an element, keeping only allowed ones.
- */
-function cleanAttributes(el: HTMLElement, allowedAttrs: string[]) {
-  const attrs = Array.from(el.attributes);
-  for (const attr of attrs) {
-    if (!allowedAttrs.includes(attr.name.toLowerCase())) {
-      el.removeAttribute(attr.name);
-    }
-  }
-}
-
-/**
- * Final cleanup pass for the DOM tree.
+ * Final cleanup pass for the DOM tree (keeping styles, colors, fonts, and formatting).
  */
 function cleanupDomTree(root: HTMLElement) {
   const allowedElements = new Set([
-    'p', 'h2', 'h3', 'h4',
-    'strong', 'b', 'em', 'i', 'u', 'del', 'code', 'pre',
+    'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'del', 'code', 'pre', 'span', 'font',
     'ul', 'ol', 'li',
     'blockquote',
     'table', 'thead', 'tbody', 'tr', 'th', 'td',
     'a', 'img', 'br', 'hr',
-    'div' // for callout / important-note
+    'div'
   ]);
 
   const allElements = Array.from(root.querySelectorAll('*'));
@@ -394,51 +343,31 @@ function cleanupDomTree(root: HTMLElement) {
     const el = allElements[i] as HTMLElement;
     const tagName = el.tagName.toLowerCase();
 
-    // 1. If tag is not allowed, unwrap or clean it
+    // If tag is completely disallowed or internal, unwrap it
     if (!allowedElements.has(tagName)) {
       unwrapElement(el);
       continue;
     }
 
-    // 2. Remove all inline styles and disallowed classes
-    if (tagName === 'div') {
-      const className = el.className || '';
-      if (!className.includes('callout') && !className.includes('important-note')) {
-        unwrapElement(el);
-        continue;
-      }
-      cleanAttributes(el, ['class']);
-    } else if (tagName === 'p') {
-      const className = el.className || '';
-      if (className.includes('callout-title')) {
-        cleanAttributes(el, ['class']);
+    // Clean Word-specific Mso classes, but keep all styles (colors, fonts, sizes, etc.)
+    if (el.className) {
+      const cleanedClasses = el.className
+        .split(/\s+/)
+        .filter((c) => !c.startsWith('Mso') && !c.startsWith('xl') && c !== 'GramE' && c !== 'SpellE')
+        .join(' ');
+      if (cleanedClasses) {
+        el.className = cleanedClasses;
       } else {
-        cleanAttributes(el, []);
+        el.removeAttribute('class');
       }
-    } else if (tagName === 'h2' || tagName === 'h3' || tagName === 'h4') {
-      cleanAttributes(el, ['id']);
-    } else if (tagName === 'strong' || tagName === 'em' || tagName === 'del' || tagName === 'code' || tagName === 'pre' || tagName === 'blockquote') {
-      cleanAttributes(el, []);
-    } else if (tagName === 'table') {
-      cleanAttributes(el, []);
-    } else if (tagName === 'tr' || tagName === 'thead' || tagName === 'tbody') {
-      cleanAttributes(el, []);
-    } else if (tagName === 'th' || tagName === 'td') {
-      cleanAttributes(el, ['colspan', 'rowspan']);
-    } else if (tagName === 'ul' || tagName === 'ol' || tagName === 'li') {
-      cleanAttributes(el, []);
     }
 
-    // Trim text content inside element
-    if (['h2', 'h3', 'h4', 'p', 'th', 'td', 'blockquote'].includes(tagName)) {
-      el.innerHTML = el.innerHTML.trim();
-    }
-
-    // 3. Remove completely empty inline elements
+    // Remove empty inline elements without style or attributes
     if (
       ['strong', 'em', 'span', 'code', 'del', 'a', 'p', 'h2', 'h3', 'h4', 'blockquote', 'li'].includes(tagName) &&
       !el.textContent?.trim() &&
-      el.children.length === 0
+      el.children.length === 0 &&
+      !el.getAttribute('style')
     ) {
       el.remove();
     }
@@ -446,10 +375,14 @@ function cleanupDomTree(root: HTMLElement) {
 }
 
 /**
- * Replaces a DOM element's tag name while preserving children.
+ * Replaces a DOM element's tag name while preserving attributes and children.
  */
 function replaceTagName(el: HTMLElement, newTag: string): HTMLElement {
   const newEl = el.ownerDocument.createElement(newTag);
+  // Copy all attributes (including styles, colors, fonts)
+  for (const attr of Array.from(el.attributes)) {
+    newEl.setAttribute(attr.name, attr.value);
+  }
   while (el.firstChild) {
     newEl.appendChild(el.firstChild);
   }
@@ -471,7 +404,7 @@ function unwrapElement(el: HTMLElement) {
 
 /**
  * Main paste event handler utility.
- * Sanitizes clipboard content and returns clean HTML ready to insert into editor.
+ * Sanitizes clipboard content and returns HTML with preserved Word styles & colors.
  */
 export function sanitizeWordPaste(clipboardData: DataTransfer): { html: string; wasWord: boolean } {
   const rawHtml = clipboardData.getData('text/html');

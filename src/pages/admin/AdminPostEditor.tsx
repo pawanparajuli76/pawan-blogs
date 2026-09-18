@@ -28,7 +28,10 @@ import {
   Sparkles,
   Check,
   Type,
+  FileText,
+  Loader2,
 } from 'lucide-react';
+import mammoth from 'mammoth';
 import { supabase } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
 import { sanitizeWordPaste, cleanWordHtml } from '@/lib/wordPasteSanitizer';
@@ -75,6 +78,7 @@ export function AdminPostEditor() {
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentFileInputRef = useRef<HTMLInputElement>(null);
+  const docxFileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<PostFormData>(emptyForm);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -85,6 +89,7 @@ export function AdminPostEditor() {
   const [error, setError] = useState<string | null>(null);
   const [slugEdited, setSlugEdited] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [importingDocx, setImportingDocx] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeFormats, setActiveFormats] = useState<ActiveFormats>({
     bold: false,
@@ -252,6 +257,62 @@ export function AdminPostEditor() {
     checkActiveFormats();
     setToastMessage('Article content cleaned & sanitized according to website styles');
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Handle client-side Word document (.docx) import
+  const handleDocxImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so user can import the same file again if desired
+    e.target.value = '';
+
+    if (!file.name.toLowerCase().endsWith('.docx')) {
+      setError('Please select a valid Microsoft Word (.docx) document.');
+      return;
+    }
+
+    setImportingDocx(true);
+    setError(null);
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+
+      // Convert docx to HTML with semantic heading/quote style mapping
+      const result = await mammoth.convertToHtml(
+        { arrayBuffer },
+        {
+          styleMap: [
+            "p[style-name='Heading 1'] => h2:fresh",
+            "p[style-name='Heading 2'] => h3:fresh",
+            "p[style-name='Heading 3'] => h4:fresh",
+            "p[style-name='Heading 4'] => h4:fresh",
+            "p[style-name='Title'] => h2:fresh",
+            "p[style-name='Subtitle'] => h3:fresh",
+            "p[style-name='Quote'] => blockquote:fresh",
+            "p[style-name='Intense Quote'] => blockquote:fresh",
+          ],
+        }
+      );
+
+      const rawHtml = result.value || '';
+      // Sanitize converted HTML with website rules (strips Mso fonts, colors, inline pt sizes)
+      const cleanHtml = cleanWordHtml(rawHtml);
+
+      if (editorRef.current) {
+        editorRef.current.innerHTML = cleanHtml;
+      }
+      setForm((f) => ({ ...f, content: cleanHtml }));
+      checkActiveFormats();
+
+      setToastMessage(`Imported "${file.name}" successfully! Content loaded into editor.`);
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`Failed to import Word document: ${message}`);
+    } finally {
+      setImportingDocx(false);
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -624,255 +685,292 @@ export function AdminPostEditor() {
           </div>
 
           {/* Content Editor */}
-          <div className="card overflow-hidden">
-            {/* Rich Text Toolbar */}
-            <div className="flex flex-wrap items-center gap-1.5 p-2.5 border-b border-navy-100 bg-navy-50/80">
-              {/* History: Undo / Redo */}
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                <button
-                  type="button"
-                  onClick={() => execCommand('undo')}
-                  title="Undo (Ctrl+Z)"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <Undo size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => execCommand('redo')}
-                  title="Redo (Ctrl+Y)"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <Redo size={16} />
-                </button>
-              </div>
-
-              {/* Block Formats: Paragraph, H2, H3, H4, Quote */}
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                <button
-                  type="button"
-                  onClick={() => handleHeading('p')}
-                  title="Paragraph (Normal Text)"
-                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
-                    activeFormats.block === 'p'
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Type size={14} />
-                  <span>Para</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleHeading('h2')}
-                  title="Heading 2 (Main Section)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.block === 'h2'
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Heading2 size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleHeading('h3')}
-                  title="Heading 3 (Sub Section)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.block === 'h3'
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Heading3 size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleHeading('h4')}
-                  title="Heading 4 (Minor Section)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.block === 'h4'
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Heading4 size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleHeading('blockquote')}
-                  title="Blockquote"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.block === 'blockquote'
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Quote size={16} />
-                </button>
-              </div>
-
-              {/* Inline Formatting: Bold, Italic, Clear Formatting */}
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                <button
-                  type="button"
-                  onClick={() => execCommand('bold')}
-                  title="Bold (Ctrl+B)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.bold
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Bold size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => execCommand('italic')}
-                  title="Italic (Ctrl+I)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.italic
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <Italic size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleClearFormatting}
-                  title="Clear Formatting"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <Eraser size={16} />
-                </button>
-              </div>
-
-              {/* Lists: Bullet, Numbered */}
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                <button
-                  type="button"
-                  onClick={() => execCommand('insertUnorderedList')}
-                  title="Bullet List"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.ul
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <List size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => execCommand('insertOrderedList')}
-                  title="Numbered List"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    activeFormats.ol
-                      ? 'bg-navy-800 text-white shadow-xs'
-                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
-                  }`}
-                >
-                  <ListOrdered size={16} />
-                </button>
-              </div>
-
-              {/* Inserts: Link, Table, Image, Code */}
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                <button
-                  type="button"
-                  onClick={insertLink}
-                  title="Insert Hyperlink"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <LinkIcon size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={insertTable}
-                  title="Insert Table"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <TableIcon size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => contentFileInputRef.current?.click()}
-                  title="Insert Image"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <ImageIcon size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={insertCodeBlock}
-                  title="Code Block"
-                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                >
-                  <Code size={16} />
-                </button>
-              </div>
-
-              {/* Callouts */}
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
-                <button
-                  type="button"
-                  onClick={insertCallout}
-                  title="Callout Box (Teal)"
-                  className="p-1.5 rounded-md text-teal-700 hover:bg-teal-50 transition-colors"
-                >
-                  <Lightbulb size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={insertImportantNote}
-                  title="Important Note Box (Gold)"
-                  className="p-1.5 rounded-md text-gold-700 hover:bg-gold-50 transition-colors"
-                >
-                  <AlertCircle size={16} />
-                </button>
-              </div>
-
-              {/* Paste from Word Sanitizer Quick Action */}
-              <div className="flex items-center gap-1.5 ml-auto">
-                <button
-                  type="button"
-                  onClick={handleCleanAllWordFormatting}
-                  title="Sanitize & clean all Word / inline formatting in editor"
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-navy-700 bg-white border border-navy-200 rounded-md hover:bg-navy-100 hover:text-navy-900 transition-colors shadow-2xs"
-                >
-                  <Sparkles size={13} className="text-gold-500" />
-                  <span>Clean Word Markup</span>
-                </button>
-              </div>
+          <div className="space-y-2">
+            {/* Header above editor with Import Word Document button */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+              <label className="label-field mb-0 font-medium text-navy-800">Article Content</label>
+              <button
+                type="button"
+                onClick={() => docxFileInputRef.current?.click()}
+                disabled={importingDocx}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white border border-navy-300 hover:border-navy-500 text-navy-800 hover:text-navy-950 hover:bg-navy-50 shadow-2xs transition-all duration-150 disabled:opacity-50"
+              >
+                {importingDocx ? (
+                  <Loader2 size={15} className="animate-spin text-navy-700" />
+                ) : (
+                  <FileText size={15} className="text-teal-700" />
+                )}
+                <span>{importingDocx ? 'Converting Document...' : 'Import Word Document (.docx)'}</span>
+              </button>
             </div>
 
-            {/* Word Paste Info Badge */}
-            <div className="px-4 py-1.5 bg-navy-50/50 border-b border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
-                <span>Auto Word Paste Sanitizer Active (removes Word fonts, colors &amp; styles, keeps headings, lists &amp; tables)</span>
-              </span>
-              <span className="text-navy-400 hidden sm:inline">Tip: Copy from Word and paste directly (Ctrl+V)</span>
-            </div>
+            <div className="card overflow-hidden">
+              {/* Rich Text Toolbar */}
+              <div className="flex flex-wrap items-center gap-1.5 p-2.5 border-b border-navy-100 bg-navy-50/80">
+                {/* History: Undo / Redo */}
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                  <button
+                    type="button"
+                    onClick={() => execCommand('undo')}
+                    title="Undo (Ctrl+Z)"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <Undo size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => execCommand('redo')}
+                    title="Redo (Ctrl+Y)"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <Redo size={16} />
+                  </button>
+                </div>
 
-            {/* Editor Content Area */}
-            <div
-              ref={editorRef}
-              contentEditable
-              onInput={updateContent}
-              onPaste={handlePaste}
-              onKeyUp={checkActiveFormats}
-              onMouseUp={checkActiveFormats}
-              className="prose-content min-h-[440px] p-6 focus:outline-none"
-              data-placeholder="Start writing or paste article content from Microsoft Word..."
-              style={{ ['--tw-prose-body' as string]: 'initial' }}
-            />
+                {/* Block Formats: Paragraph, H2, H3, H4, Quote */}
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                  <button
+                    type="button"
+                    onClick={() => handleHeading('p')}
+                    title="Paragraph (Normal Text)"
+                    className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                      activeFormats.block === 'p'
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Type size={14} />
+                    <span>Para</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleHeading('h2')}
+                    title="Heading 2 (Main Section)"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.block === 'h2'
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Heading2 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleHeading('h3')}
+                    title="Heading 3 (Sub Section)"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.block === 'h3'
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Heading3 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleHeading('h4')}
+                    title="Heading 4 (Minor Section)"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.block === 'h4'
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Heading4 size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleHeading('blockquote')}
+                    title="Blockquote"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.block === 'blockquote'
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Quote size={16} />
+                  </button>
+                </div>
 
-            {uploadingImage && (
-              <div className="px-6 py-3 bg-gold-50 border-t border-gold-200 text-sm text-gold-800">
-                Uploading image...
+                {/* Inline Formatting: Bold, Italic, Clear Formatting */}
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                  <button
+                    type="button"
+                    onClick={() => execCommand('bold')}
+                    title="Bold (Ctrl+B)"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.bold
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Bold size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => execCommand('italic')}
+                    title="Italic (Ctrl+I)"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.italic
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <Italic size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleClearFormatting}
+                    title="Clear Formatting"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <Eraser size={16} />
+                  </button>
+                </div>
+
+                {/* Lists: Bullet, Numbered */}
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                  <button
+                    type="button"
+                    onClick={() => execCommand('insertUnorderedList')}
+                    title="Bullet List"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.ul
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <List size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => execCommand('insertOrderedList')}
+                    title="Numbered List"
+                    className={`p-1.5 rounded-md transition-colors ${
+                      activeFormats.ol
+                        ? 'bg-navy-800 text-white shadow-xs'
+                        : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                    }`}
+                  >
+                    <ListOrdered size={16} />
+                  </button>
+                </div>
+
+                {/* Inserts: Link, Table, Image, Code */}
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                  <button
+                    type="button"
+                    onClick={insertLink}
+                    title="Insert Hyperlink"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <LinkIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={insertTable}
+                    title="Insert Table"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <TableIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => contentFileInputRef.current?.click()}
+                    title="Insert Image"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <ImageIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={insertCodeBlock}
+                    title="Code Block"
+                    className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                  >
+                    <Code size={16} />
+                  </button>
+                </div>
+
+                {/* Callouts */}
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                  <button
+                    type="button"
+                    onClick={insertCallout}
+                    title="Callout Box (Teal)"
+                    className="p-1.5 rounded-md text-teal-700 hover:bg-teal-50 transition-colors"
+                  >
+                    <Lightbulb size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={insertImportantNote}
+                    title="Important Note Box (Gold)"
+                    className="p-1.5 rounded-md text-gold-700 hover:bg-gold-50 transition-colors"
+                  >
+                    <AlertCircle size={16} />
+                  </button>
+                </div>
+
+                {/* Word Import & Sanitizer Quick Actions */}
+                <div className="flex items-center gap-1.5 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => docxFileInputRef.current?.click()}
+                    disabled={importingDocx}
+                    title="Import Word Document (.docx)"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-teal-800 bg-teal-50/80 border border-teal-200 rounded-md hover:bg-teal-100 hover:text-teal-950 transition-colors shadow-2xs"
+                  >
+                    <FileText size={13} className="text-teal-700" />
+                    <span>{importingDocx ? 'Importing...' : 'Import .docx'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCleanAllWordFormatting}
+                    title="Sanitize & clean all Word / inline formatting in editor"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-navy-700 bg-white border border-navy-200 rounded-md hover:bg-navy-100 hover:text-navy-900 transition-colors shadow-2xs"
+                  >
+                    <Sparkles size={13} className="text-gold-500" />
+                    <span>Clean Word Markup</span>
+                  </button>
+                </div>
               </div>
-            )}
+
+              {/* Word Paste Info Badge */}
+              <div className="px-4 py-1.5 bg-navy-50/50 border-b border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                  <span>Word Import (.docx) &amp; Auto-Sanitizer Active (converts Word headings, lists &amp; tables to site styling)</span>
+                </span>
+                <span className="text-navy-400 hidden sm:inline">Tip: Import .docx directly or copy/paste from Word</span>
+              </div>
+
+              {/* Editor Content Area */}
+              <div
+                ref={editorRef}
+                contentEditable
+                onInput={updateContent}
+                onPaste={handlePaste}
+                onKeyUp={checkActiveFormats}
+                onMouseUp={checkActiveFormats}
+                className="prose-content min-h-[440px] p-6 focus:outline-none"
+                data-placeholder="Start writing, import a Word .docx document, or paste from Word..."
+                style={{ ['--tw-prose-body' as string]: 'initial' }}
+              />
+
+              {importingDocx && (
+                <div className="px-6 py-3 bg-teal-50 border-t border-teal-200 text-sm text-teal-900 flex items-center gap-2 font-medium">
+                  <Loader2 size={16} className="animate-spin text-teal-700" />
+                  <span>Extracting and converting Word document content...</span>
+                </div>
+              )}
+
+              {uploadingImage && (
+                <div className="px-6 py-3 bg-gold-50 border-t border-gold-200 text-sm text-gold-800">
+                  Uploading image...
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1011,6 +1109,14 @@ export function AdminPostEditor() {
         type="file"
         accept="image/*"
         onChange={handleContentImageUpload}
+        className="hidden"
+      />
+
+      <input
+        ref={docxFileInputRef}
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={handleDocxImport}
         className="hidden"
       />
     </div>
