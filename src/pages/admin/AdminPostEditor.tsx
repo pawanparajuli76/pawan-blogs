@@ -14,6 +14,7 @@ import {
   ListOrdered,
   Heading2,
   Heading3,
+  Heading4,
   Quote,
   Table as TableIcon,
   Image as ImageIcon,
@@ -21,9 +22,16 @@ import {
   AlertCircle,
   Lightbulb,
   Star,
+  Undo,
+  Redo,
+  Eraser,
+  Sparkles,
+  Check,
+  Type,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
+import { sanitizeWordPaste, cleanWordHtml } from '@/lib/wordPasteSanitizer';
 import type { Category, Tag } from '@/types';
 
 interface PostFormData {
@@ -52,6 +60,14 @@ const emptyForm: PostFormData = {
   seo_description: '',
 };
 
+interface ActiveFormats {
+  bold: boolean;
+  italic: boolean;
+  ul: boolean;
+  ol: boolean;
+  block: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote' | null;
+}
+
 export function AdminPostEditor() {
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
@@ -69,6 +85,14 @@ export function AdminPostEditor() {
   const [error, setError] = useState<string | null>(null);
   const [slugEdited, setSlugEdited] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeFormats, setActiveFormats] = useState<ActiveFormats>({
+    bold: false,
+    italic: false,
+    ul: false,
+    ol: false,
+    block: 'p',
+  });
 
   useEffect(() => {
     async function fetchData() {
@@ -139,28 +163,147 @@ export function AdminPostEditor() {
     }
   }, []);
 
+  // Update active formatting states based on current selection
+  const checkActiveFormats = useCallback(() => {
+    if (!editorRef.current) return;
+
+    try {
+      const bold = document.queryCommandState('bold');
+      const italic = document.queryCommandState('italic');
+      const ul = document.queryCommandState('insertUnorderedList');
+      const ol = document.queryCommandState('insertOrderedList');
+
+      let block: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote' | null = 'p';
+
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        let node: Node | null = selection.getRangeAt(0).commonAncestorContainer;
+        if (node.nodeType === Node.TEXT_NODE) {
+          node = node.parentNode;
+        }
+
+        while (node && node !== editorRef.current) {
+          const tag = (node as HTMLElement).tagName?.toLowerCase();
+          if (tag === 'h2') {
+            block = 'h2';
+            break;
+          } else if (tag === 'h3') {
+            block = 'h3';
+            break;
+          } else if (tag === 'h4') {
+            block = 'h4';
+            break;
+          } else if (tag === 'blockquote') {
+            block = 'blockquote';
+            break;
+          } else if (tag === 'p') {
+            block = 'p';
+            break;
+          }
+          node = node.parentNode;
+        }
+      }
+
+      setActiveFormats({ bold, italic, ul, ol, block });
+    } catch {
+      // Ignore queryCommandState failures on blur
+    }
+  }, []);
+
   const execCommand = (command: string, value?: string) => {
     document.execCommand(command, false, value);
     editorRef.current?.focus();
     updateContent();
+    checkActiveFormats();
   };
 
   const insertHTML = (html: string) => {
     document.execCommand('insertHTML', false, html);
     editorRef.current?.focus();
     updateContent();
+    checkActiveFormats();
   };
 
-  const handleHeading = (tag: string) => {
+  const handleHeading = (tag: 'p' | 'h2' | 'h3' | 'h4' | 'blockquote') => {
     document.execCommand('formatBlock', false, tag);
     editorRef.current?.focus();
     updateContent();
+    checkActiveFormats();
+  };
+
+  const handleClearFormatting = () => {
+    document.execCommand('removeFormat', false);
+    document.execCommand('formatBlock', false, 'p');
+    editorRef.current?.focus();
+    updateContent();
+    checkActiveFormats();
+    setToastMessage('Formatting cleared');
+    setTimeout(() => setToastMessage(null), 2500);
+  };
+
+  const handleCleanAllWordFormatting = () => {
+    if (!editorRef.current) return;
+    const currentHtml = editorRef.current.innerHTML;
+    if (!currentHtml || currentHtml.trim() === '') return;
+
+    const cleaned = cleanWordHtml(currentHtml);
+    editorRef.current.innerHTML = cleaned;
+    updateContent();
+    checkActiveFormats();
+    setToastMessage('Article content cleaned & sanitized according to website styles');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    const { html, wasWord } = sanitizeWordPaste(e.clipboardData);
+    if (!html) return;
+
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const frag = document.createDocumentFragment();
+      let node: ChildNode | null;
+      let lastNode: ChildNode | null = null;
+      while ((node = tempDiv.firstChild)) {
+        lastNode = frag.appendChild(node);
+      }
+      range.insertNode(frag);
+
+      if (lastNode) {
+        const newRange = document.createRange();
+        newRange.setStartAfter(lastNode);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+    } else if (editorRef.current) {
+      editorRef.current.innerHTML += html;
+    }
+
+    updateContent();
+    checkActiveFormats();
+
+    if (wasWord) {
+      setToastMessage('Microsoft Word content sanitized & formatting cleaned');
+    } else {
+      setToastMessage('Pasted content formatted cleanly');
+    }
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const insertLink = () => {
-    const url = prompt('Enter URL:');
+    const url = prompt('Enter URL (e.g. https://example.com):');
     if (url) {
-      execCommand('createLink', url);
+      const formattedUrl = /^https?:\/\//i.test(url) || url.startsWith('/') || url.startsWith('#') || url.startsWith('mailto:')
+        ? url
+        : `https://${url}`;
+      execCommand('createLink', formattedUrl);
     }
   };
 
@@ -278,11 +421,14 @@ export function AdminPostEditor() {
         ? undefined
         : publish ? new Date().toISOString() : null;
 
+    // Clean content one final time before saving to ensure 100% clean markup
+    const cleanedContent = form.content ? cleanWordHtml(form.content) : null;
+
     const postData: Record<string, unknown> = {
       title: form.title,
       slug: form.slug,
       excerpt: form.excerpt || null,
-      content: form.content || null,
+      content: cleanedContent,
       featured_image: form.featured_image || null,
       category_id: form.category_id || null,
       status,
@@ -357,22 +503,6 @@ export function AdminPostEditor() {
     );
   }
 
-  const toolbarButtons = [
-    { icon: Bold, action: () => execCommand('bold'), title: 'Bold' },
-    { icon: Italic, action: () => execCommand('italic'), title: 'Italic' },
-    { icon: LinkIcon, action: insertLink, title: 'Insert Link' },
-    { icon: List, action: () => execCommand('insertUnorderedList'), title: 'Bullet List' },
-    { icon: ListOrdered, action: () => execCommand('insertOrderedList'), title: 'Numbered List' },
-    { icon: Heading2, action: () => handleHeading('h2'), title: 'Heading 2' },
-    { icon: Heading3, action: () => handleHeading('h3'), title: 'Heading 3' },
-    { icon: Quote, action: () => handleHeading('blockquote'), title: 'Quote' },
-    { icon: TableIcon, action: insertTable, title: 'Insert Table' },
-    { icon: ImageIcon, action: () => contentFileInputRef.current?.click(), title: 'Insert Image' },
-    { icon: Code, action: insertCodeBlock, title: 'Code Block' },
-    { icon: Lightbulb, action: insertCallout, title: 'Callout Box' },
-    { icon: AlertCircle, action: insertImportantNote, title: 'Important Note' },
-  ];
-
   return (
     <div>
       {/* Header */}
@@ -441,6 +571,13 @@ export function AdminPostEditor() {
         </div>
       )}
 
+      {toastMessage && (
+        <div className="flex items-center gap-2.5 px-4 py-3 bg-teal-900 text-white rounded-lg shadow-soft-lg mb-6 transition-all animate-fadeIn">
+          <Check size={18} className="text-teal-300 flex-shrink-0" />
+          <p className="text-sm font-medium">{toastMessage}</p>
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main editor */}
         <div className="lg:col-span-2 space-y-5">
@@ -488,30 +625,246 @@ export function AdminPostEditor() {
 
           {/* Content Editor */}
           <div className="card overflow-hidden">
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-1 p-3 border-b border-navy-100 bg-navy-50">
-              {toolbarButtons.map((btn, i) => {
-                const Icon = btn.icon;
-                return (
-                  <button
-                    key={i}
-                    onClick={btn.action}
-                    title={btn.title}
-                    className="p-2 rounded-lg text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
-                  >
-                    <Icon size={18} />
-                  </button>
-                );
-              })}
+            {/* Rich Text Toolbar */}
+            <div className="flex flex-wrap items-center gap-1.5 p-2.5 border-b border-navy-100 bg-navy-50/80">
+              {/* History: Undo / Redo */}
+              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                <button
+                  type="button"
+                  onClick={() => execCommand('undo')}
+                  title="Undo (Ctrl+Z)"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <Undo size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => execCommand('redo')}
+                  title="Redo (Ctrl+Y)"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <Redo size={16} />
+                </button>
+              </div>
+
+              {/* Block Formats: Paragraph, H2, H3, H4, Quote */}
+              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                <button
+                  type="button"
+                  onClick={() => handleHeading('p')}
+                  title="Paragraph (Normal Text)"
+                  className={`px-2 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                    activeFormats.block === 'p'
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Type size={14} />
+                  <span>Para</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleHeading('h2')}
+                  title="Heading 2 (Main Section)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.block === 'h2'
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Heading2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleHeading('h3')}
+                  title="Heading 3 (Sub Section)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.block === 'h3'
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Heading3 size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleHeading('h4')}
+                  title="Heading 4 (Minor Section)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.block === 'h4'
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Heading4 size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleHeading('blockquote')}
+                  title="Blockquote"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.block === 'blockquote'
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Quote size={16} />
+                </button>
+              </div>
+
+              {/* Inline Formatting: Bold, Italic, Clear Formatting */}
+              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                <button
+                  type="button"
+                  onClick={() => execCommand('bold')}
+                  title="Bold (Ctrl+B)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.bold
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Bold size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => execCommand('italic')}
+                  title="Italic (Ctrl+I)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.italic
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <Italic size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearFormatting}
+                  title="Clear Formatting"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <Eraser size={16} />
+                </button>
+              </div>
+
+              {/* Lists: Bullet, Numbered */}
+              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                <button
+                  type="button"
+                  onClick={() => execCommand('insertUnorderedList')}
+                  title="Bullet List"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.ul
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <List size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => execCommand('insertOrderedList')}
+                  title="Numbered List"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    activeFormats.ol
+                      ? 'bg-navy-800 text-white shadow-xs'
+                      : 'text-navy-600 hover:bg-white hover:text-navy-900'
+                  }`}
+                >
+                  <ListOrdered size={16} />
+                </button>
+              </div>
+
+              {/* Inserts: Link, Table, Image, Code */}
+              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                <button
+                  type="button"
+                  onClick={insertLink}
+                  title="Insert Hyperlink"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <LinkIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={insertTable}
+                  title="Insert Table"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <TableIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => contentFileInputRef.current?.click()}
+                  title="Insert Image"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <ImageIcon size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={insertCodeBlock}
+                  title="Code Block"
+                  className="p-1.5 rounded-md text-navy-600 hover:bg-white hover:text-navy-900 transition-colors"
+                >
+                  <Code size={16} />
+                </button>
+              </div>
+
+              {/* Callouts */}
+              <div className="flex items-center gap-0.5 pr-1.5 border-r border-navy-200">
+                <button
+                  type="button"
+                  onClick={insertCallout}
+                  title="Callout Box (Teal)"
+                  className="p-1.5 rounded-md text-teal-700 hover:bg-teal-50 transition-colors"
+                >
+                  <Lightbulb size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={insertImportantNote}
+                  title="Important Note Box (Gold)"
+                  className="p-1.5 rounded-md text-gold-700 hover:bg-gold-50 transition-colors"
+                >
+                  <AlertCircle size={16} />
+                </button>
+              </div>
+
+              {/* Paste from Word Sanitizer Quick Action */}
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button
+                  type="button"
+                  onClick={handleCleanAllWordFormatting}
+                  title="Sanitize & clean all Word / inline formatting in editor"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-navy-700 bg-white border border-navy-200 rounded-md hover:bg-navy-100 hover:text-navy-900 transition-colors shadow-2xs"
+                >
+                  <Sparkles size={13} className="text-gold-500" />
+                  <span>Clean Word Markup</span>
+                </button>
+              </div>
             </div>
 
-            {/* Editor area */}
+            {/* Word Paste Info Badge */}
+            <div className="px-4 py-1.5 bg-navy-50/50 border-b border-navy-100 flex items-center justify-between text-[11px] text-navy-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+                <span>Auto Word Paste Sanitizer Active (removes Word fonts, colors &amp; styles, keeps headings, lists &amp; tables)</span>
+              </span>
+              <span className="text-navy-400 hidden sm:inline">Tip: Copy from Word and paste directly (Ctrl+V)</span>
+            </div>
+
+            {/* Editor Content Area */}
             <div
               ref={editorRef}
               contentEditable
               onInput={updateContent}
-              className="prose-content min-h-[400px] p-6 focus:outline-none"
-              data-placeholder="Start writing your article..."
+              onPaste={handlePaste}
+              onKeyUp={checkActiveFormats}
+              onMouseUp={checkActiveFormats}
+              className="prose-content min-h-[440px] p-6 focus:outline-none"
+              data-placeholder="Start writing or paste article content from Microsoft Word..."
               style={{ ['--tw-prose-body' as string]: 'initial' }}
             />
 

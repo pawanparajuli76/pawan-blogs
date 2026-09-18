@@ -19,6 +19,7 @@ import { BlogCard } from '@/components/BlogCard';
 import { supabase } from '@/lib/supabase';
 import type { BlogPostWithRelations, BlogPost, Category } from '@/types';
 import { formatDate, formatDateShort, calculateReadingTime } from '@/lib/utils';
+import { cleanWordHtml } from '@/lib/wordPasteSanitizer';
 
 export function BlogPostPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -104,8 +105,9 @@ export function BlogPostPage() {
   useEffect(() => {
     if (!post?.content) return;
 
+    const cleaned = cleanWordHtml(post.content);
     const container = document.createElement('div');
-    container.innerHTML = post.content;
+    container.innerHTML = cleaned;
 
     const headingElements = container.querySelectorAll('h2, h3, h4');
     const extracted: { id: string; text: string; level: number }[] = [];
@@ -153,8 +155,9 @@ export function BlogPostPage() {
   const renderContent = () => {
     if (!post?.content) return undefined;
 
+    const cleaned = cleanWordHtml(post.content);
     const container = document.createElement('div');
-    container.innerHTML = post.content;
+    container.innerHTML = cleaned;
 
     const headingElements = container.querySelectorAll('h2, h3, h4');
     headingElements.forEach((el, i) => {
