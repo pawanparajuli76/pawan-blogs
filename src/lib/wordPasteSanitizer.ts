@@ -154,8 +154,12 @@ function reconstructLists(container: HTMLElement) {
       const style = child.getAttribute('style') || '';
       const text = child.textContent?.trim() || '';
 
-      const isMsoList = /MsoListParagraph/i.test(className) || /mso-list:/i.test(style);
-      const bulletMatch = text.match(/^([•·\u2022\u00b7\u25cf\u25aa\u2013\u2014\-*]|\(?[0-9a-zA-Z]+[\.\)])\s+/);
+      // Headings must NEVER be converted into list items
+      if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName) || /MsoHeading|MsoTitle/i.test(className)) {
+        currentList = null;
+        currentListType = null;
+        continue;
+      }
 
       if (tagName === 'ul' || tagName === 'ol') {
         normalizeListItems(child);
@@ -164,8 +168,12 @@ function reconstructLists(container: HTMLElement) {
         continue;
       }
 
-      if (isMsoList || (tagName === 'p' && bulletMatch)) {
-        const isOrdered = /^[0-9]+[\.\)]|^\([0-9]+\)/.test(text) || (bulletMatch && /^[0-9]+[\.\)]/.test(bulletMatch[1]));
+      const isMsoList = /MsoListParagraph/i.test(className) || /mso-list:/i.test(style);
+      const isBullet = /^[•·\u2022\u00b7\u25cf\u25aa\u2013\u2014\-*]\s+/.test(text);
+
+      // Only convert MsoListParagraph or explicit bullet paragraphs
+      if (isMsoList || (tagName === 'p' && isBullet)) {
+        const isOrdered = /^[0-9]+[\.\)]|^\([0-9]+\)/.test(text);
         const listType: 'ul' | 'ol' = isOrdered ? 'ol' : 'ul';
 
         if (!currentList || currentListType !== listType) {
@@ -176,7 +184,6 @@ function reconstructLists(container: HTMLElement) {
 
         // Create <li>
         const li = child.ownerDocument.createElement('li');
-        // Preserve any inline styles on the list item
         if (style) {
           li.setAttribute('style', style);
         }

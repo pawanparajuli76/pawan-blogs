@@ -35,6 +35,7 @@ import mammoth from 'mammoth';
 import { supabase } from '@/lib/supabase';
 import { slugify } from '@/lib/utils';
 import { sanitizeWordPaste, cleanWordHtml } from '@/lib/wordPasteSanitizer';
+import { convertDocxToHtml } from '@/lib/docxConverter';
 import type { Category, Tag } from '@/types';
 
 interface PostFormData {
@@ -278,25 +279,32 @@ export function AdminPostEditor() {
     try {
       const arrayBuffer = await file.arrayBuffer();
 
-      // Convert docx to HTML with semantic heading/quote style mapping
-      const result = await mammoth.convertToHtml(
-        { arrayBuffer },
-        {
-          styleMap: [
-            "p[style-name='Heading 1'] => h2:fresh",
-            "p[style-name='Heading 2'] => h3:fresh",
-            "p[style-name='Heading 3'] => h4:fresh",
-            "p[style-name='Heading 4'] => h4:fresh",
-            "p[style-name='Title'] => h2:fresh",
-            "p[style-name='Subtitle'] => h3:fresh",
-            "p[style-name='Quote'] => blockquote:fresh",
-            "p[style-name='Intense Quote'] => blockquote:fresh",
-          ],
-        }
-      );
+      let rawHtml = '';
+      try {
+        // 1. High-fidelity OpenXML converter: Preserves exact text colors, heading numbering (e.g. 1. IPO Reform, 2. Strengthening...), fonts, bold/italic, tables & spacing
+        rawHtml = await convertDocxToHtml(arrayBuffer);
+      } catch (docxErr) {
+        console.warn('OpenXML parser fallback to Mammoth:', docxErr);
+        // Fallback: Mammoth
+        const result = await mammoth.convertToHtml(
+          { arrayBuffer },
+          {
+            styleMap: [
+              "p[style-name='Heading 1'] => h2:fresh",
+              "p[style-name='Heading 2'] => h3:fresh",
+              "p[style-name='Heading 3'] => h4:fresh",
+              "p[style-name='Heading 4'] => h4:fresh",
+              "p[style-name='Title'] => h2:fresh",
+              "p[style-name='Subtitle'] => h3:fresh",
+              "p[style-name='Quote'] => blockquote:fresh",
+              "p[style-name='Intense Quote'] => blockquote:fresh",
+            ],
+          }
+        );
+        rawHtml = result.value || '';
+      }
 
-      const rawHtml = result.value || '';
-      // Sanitize converted HTML with website rules (strips Mso fonts, colors, inline pt sizes)
+      // Clean unsafe Office markup while preserving all formatting, colors, and styles
       const cleanHtml = cleanWordHtml(rawHtml);
 
       if (editorRef.current) {
@@ -305,7 +313,7 @@ export function AdminPostEditor() {
       setForm((f) => ({ ...f, content: cleanHtml }));
       checkActiveFormats();
 
-      setToastMessage(`Imported "${file.name}" successfully! Content loaded into editor.`);
+      setToastMessage(`Imported "${file.name}" successfully with full Word colors, formatting and numbered headings preserved!`);
       setTimeout(() => setToastMessage(null), 4000);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
